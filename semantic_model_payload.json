@@ -1,0 +1,15 @@
+{
+  "displayName": "RestaurantAnalytics",
+  "description": "Restaurant operations intelligence with Direct Lake",
+  "definition": {
+    "format": "TMDL",
+    "parts": [
+      {"path": "definition.pbism", "payload": "ew0KICAgICJ2ZXJzaW9uIjogIjQuMiIsDQogICAgInNldHRpbmdzIjogew0KICAgICAgICAicW5hRW5hYmxlZCI6IHRydWUNCiAgICB9DQp9DQo=", "payloadType": "InlineBase64"},
+      {"path": "definition/database.tmdl", "payload": "ZGF0YWJhc2UgUmVzdGF1cmFudEFuYWx5dGljcw0KCWNvbXBhdGliaWxpdHlMZXZlbDogMTcwMQ0K", "payloadType": "InlineBase64"},
+      {"path": "definition/model.tmdl", "payload": "ZXhwcmVzc2lvbiBETF9MYWtlaG91c2UgPQ0KCWxldA0KCQlTb3VyY2UgPSBBenVyZVN0b3JhZ2UuRGF0YUxha2UoImh0dHBzOi8vb25lbGFrZS5kZnMuZmFicmljLm1pY3Jvc29mdC5jb20vYTM5ODU0YWUtYjhmMy00NmQ3LTg3NmEtMTE3ZWJkZDliOGI4LzRiZTk0YWE0LWY1ZjUtNGNmYi04NWEwLTgxNzU5ZDU1ZWVjZiIsIFtIaWVyYXJjaGljYWxOYXZpZ2F0aW9uPXRydWVdKQ0KCWluDQoJCVNvdXJjZQ0KDQptb2RlbCBNb2RlbA0KCWN1bHR1cmU6IGVuLVVTDQoJZGVmYXVsdFBvd2VyQklEYXRhU291cmNlVmVyc2lvbjogcG93ZXJCSV9WMw0KCWRpc2NvdXJhZ2VJbXBsaWNpdE1lYXN1cmVzDQo=", "payloadType": "InlineBase64"},
+      {"path": "definition/tables/fact_orders.tmdl", "payload": "dGFibGUgZmFjdF9vcmRlcnMNCglsaW5lYWdlVGFnOiAiODRiNTNjOGYtMTIzNC00NTY3LTg5YWItY2RlZjAxMjM0NTY3Ig0KCQ0KCWNvbHVtbiBvcmRlcl9pZA0KCQlkYXRhVHlwZTogc3RyaW5nDQoJDQoJY29sdW1uIG9yZGVyX2RhdGUNCgkJZGF0YVR5cGU6IGRhdGV0aW1lDQoJDQoJY29sdW1uIGNoYW5uZWwNCgkJZGF0YVR5cGU6IHN0cmluZw0KCQ0KCWNvbHVtbiBzdGF0dXMNCgkJZGF0YVR5cGU6IHN0cmluZw0KCQ0KCWNvbHVtbiBkZWxheV9taW51dGVzDQoJCWRhdGFUeXBlOiBkb3VibGUNCgkNCgljb2x1bW4gaXNfZGVsYXllZA0KCQlkYXRhVHlwZTogYm9vbGVhbg0KCQ0KCWNvbHVtbiBpc19vbl9zbGENCgkJZGF0YVR5cGU6IGJvb2xlYW4NCgkNCgljb2x1bW4gY3JlYXRlZF90cw0KCQlkYXRhVHlwZTogZGF0ZXRpbWUNCgkNCglwYXJ0aXRpb24gZmFjdF9vcmRlcnMNCgkJbW9kZTogZGlyZWN0TGFrZQ0KCQlzb3VyY2UNCgkJCWVudGl0eU5hbWU6IGZhY3Rfb3JkZXJzDQoJCQlzY2hlbWFOYW1lOiBkYm8NCg==", "payloadType": "InlineBase64"},
+      {"path": "definition/tables/dim_stations.tmdl", "payload": "dGFibGUgZGltX3N0YXRpb25zDQoJbGluZWFnZVRhZzogImI3ZDg1ZDBnLTQ1NjctNzg5MC0xMmNkLWNkZWYzNDU2Nzg5MCINCgkNCgljb2x1bW4gc3RhdGlvbl9pZA0KCQlkYXRhVHlwZTogc3RyaW5nDQoJDQoJY29sdW1uIHN0YXRpb25fbmFtZQ0KCQlkYXRhVHlwZTogc3RyaW5nDQoJDQoJY29sdW1uIGNhcGFjaXR5DQoJCWRhdGFUeXBlOiBpbnQ2NA0KCQ0KCWNvbHVtbiBjcmVhdGVkX3RzDQoJCWRhdGFUeXBlOiBkYXRldGltZQ0KCQ0KCXBhcnRpdGlvbiBkaW1fc3RhdGlvbnMNCgkJbW9kZTogZGlyZWN0TGFrZQ0KCQlzb3VyY2UNCgkJCWVudGl0eU5hbWU6IGRpbV9zdGF0aW9ucw0KCQkJc2NoZW1hTmFtZTogZGJvDQo=", "payloadType": "InlineBase64"},
+      {"path": "definition/tables/dim_channels.tmdl", "payload": "dGFibGUgZGltX2NoYW5uZWxzDQoJbGluZWFnZVRhZzogImM4ZTk2ZTFoLTU2NzgtODkwMS0yM2RlLWNkZWY0NTY3ODkwMSINCgkNCgljb2x1bW4gY2hhbm5lbF9pZA0KCQlkYXRhVHlwZTogc3RyaW5nDQoJDQoJY29sdW1uIGNoYW5uZWxfbmFtZQ0KCQlkYXRhVHlwZTogc3RyaW5nDQoJDQoJY29sdW1uIHNsYV9taW51dGVzDQoJCWRhdGFUeXBlOiBpbnQ2NA0KCQ0KCWNvbHVtbiBjcmVhdGVkX3RzDQoJCWRhdGFUeXBlOiBkYXRldGltZQ0KCQ0KCXBhcnRpdGlvbiBkaW1fY2hhbm5lbHMNCgkJbW9kZTogZGlyZWN0TGFrZQ0KCQlzb3VyY2UNCgkJCWVudGl0eU5hbWU6IGRpbV9jaGFubmVscw0KCQkJc2NoZW1hTmFtZTogZGJvDQo=", "payloadType": "InlineBase64"}
+    ]
+  }
+}
