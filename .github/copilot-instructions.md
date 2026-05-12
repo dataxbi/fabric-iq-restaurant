@@ -28,9 +28,17 @@ The scripts should prepare:
 - Eventhouse
 - KQL database
 - Eventstream
-- Initial operational KQL tables: `order_events`, `kitchen_events`, `inventory_events`, `agent_events`, `approval_events`, and `action_events`
+- Raw landing KQL table: `raw_restaurant_events`
+- Operational KQL tables: `order_events`, `kitchen_events`, `inventory_events`, `agent_events`, `approval_events`, and `action_events`
+- KQL functions and update policies that distribute/transform rows from `raw_restaurant_events` into the operational tables
 - Activator rules/actions for simple operational conditions
 - Operations Agent configuration guidance/playbook for complex conditions
+
+## Event ingestion pattern
+- Eventstream should route raw restaurant events into `raw_restaurant_events`.
+- Keep Eventstream configuration simple: ingestion/routing only, not the main operational modeling layer.
+- Implement event classification and normalization in Eventhouse with KQL functions and update policies.
+- Activator, Operations Agent, dashboards, and traceability queries should use the derived operational tables unless raw event inspection is explicitly needed.
 
 ## Security rules
 - Do not commit access tokens, IDs, connection strings, or workspace secrets.
@@ -45,8 +53,8 @@ The scripts should prepare:
 
 ## Suggested execution order
 1. Bootstrap Fabric resources by name.
-2. Create the Eventhouse schema.
-3. Configure Eventstream routing into Eventhouse.
+2. Create the Eventhouse schema, KQL functions, and update policies.
+3. Configure Eventstream routing into `raw_restaurant_events`.
 4. Configure Activator rules for simple conditions such as stock-critical, high queue, and delayed orders.
 5. Configure Operations Agent with Eventhouse as knowledge source for complex recommendations.
 6. Run the restaurant event simulator and verify the event -> condition -> recommendation/approval -> action trace.
