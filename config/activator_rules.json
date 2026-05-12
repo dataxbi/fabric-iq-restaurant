@@ -1,0 +1,65 @@
+{
+  "rules": [
+    {
+      "name": "DelayedOrderHighQueue",
+      "owner": "Fabric Activator",
+      "conditionType": "simple",
+      "description": "Trigger when an order is delayed and its station queue is high.",
+      "source": {
+        "table": "order_events",
+        "eventName": "order.prep.delayed"
+      },
+      "condition": {
+        "all": [
+          {"field": "delay_minutes", "operator": ">=", "value": 5},
+          {"field": "payload.queue_size", "operator": ">=", "value": 7}
+        ]
+      },
+      "action": {
+        "eventName": "action.kitchen.reprioritized",
+        "description": "Reprioritize the delayed order and optionally assign a support station."
+      }
+    },
+    {
+      "name": "CriticalInventory",
+      "owner": "Fabric Activator",
+      "conditionType": "simple",
+      "description": "Trigger replenishment when an ingredient falls below its threshold.",
+      "source": {
+        "table": "inventory_events",
+        "eventName": "inventory.level.changed"
+      },
+      "condition": {
+        "all": [
+          {"field": "stock_pct", "operator": "<=", "fieldRef": "threshold_pct"}
+        ]
+      },
+      "action": {
+        "eventName": "action.restock.triggered",
+        "description": "Request ingredient replenishment."
+      }
+    },
+    {
+      "name": "DeliveryChannelSaturation",
+      "owner": "Fabric Activator",
+      "conditionType": "simple",
+      "description": "Throttle delivery intake when delivery delays accumulate.",
+      "source": {
+        "table": "order_events",
+        "eventName": "order.prep.delayed"
+      },
+      "condition": {
+        "all": [
+          {"field": "channel", "operator": "==", "value": "delivery"},
+          {"field": "delay_minutes", "operator": ">=", "value": 5}
+        ],
+        "window": "5m",
+        "minimumOccurrences": 3
+      },
+      "action": {
+        "eventName": "action.channel.throttled",
+        "description": "Temporarily reduce delivery channel intake."
+      }
+    }
+  ]
+}

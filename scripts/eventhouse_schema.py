@@ -5,29 +5,140 @@ from fabric_client import FabricClient, FabricConfigError, read_bool_env, requir
 
 TABLES = [
     (
+        "raw_restaurant_events",
+        "event_time:datetime, event_id:string, event_name:string, entity_type:string, entity_id:string, order_id:string, station_id:string, ingredient_id:string, channel:string, severity:string, payload:dynamic",
+    ),
+    (
         "order_events",
-        "event_time:datetime, event_id:string, order_id:string, channel:string, event_name:string, order_status:string, station_id:string, delay_minutes:real, payload:dynamic",
+        "event_time:datetime, event_id:string, order_id:string, channel:string, event_name:string, order_status:string, station_id:string, delay_minutes:real, severity:string, payload:dynamic",
     ),
     (
         "kitchen_events",
-        "event_time:datetime, event_id:string, station_id:string, station_status:string, queue_size:long, capacity:long, payload:dynamic",
+        "event_time:datetime, event_id:string, station_id:string, station_status:string, queue_size:long, capacity:long, severity:string, payload:dynamic",
     ),
     (
         "inventory_events",
-        "event_time:datetime, event_id:string, ingredient_id:string, stock_pct:real, threshold_pct:real, payload:dynamic",
+        "event_time:datetime, event_id:string, ingredient_id:string, stock_pct:real, threshold_pct:real, severity:string, payload:dynamic",
     ),
     (
         "agent_events",
-        "event_time:datetime, event_id:string, recommendation_id:string, order_id:string, priority:int, confidence:real, payload:dynamic",
+        "event_time:datetime, event_id:string, recommendation_id:string, order_id:string, priority:int, confidence:real, severity:string, payload:dynamic",
     ),
     (
         "approval_events",
-        "event_time:datetime, event_id:string, recommendation_id:string, approver:string, approval_status:string, payload:dynamic",
+        "event_time:datetime, event_id:string, recommendation_id:string, approver:string, approval_status:string, severity:string, payload:dynamic",
     ),
     (
         "action_events",
-        "event_time:datetime, event_id:string, action_id:string, action_type:string, action_status:string, payload:dynamic",
+        "event_time:datetime, event_id:string, action_id:string, action_type:string, action_status:string, severity:string, payload:dynamic",
     ),
+]
+
+FUNCTIONS = [
+    (
+        "RouteOrderEvents",
+        """
+raw_restaurant_events
+| where event_name in ("order.created", "order.prep.delayed", "customer.sentiment.signal", "payment.completed")
+| project
+    event_time,
+    event_id,
+    order_id,
+    channel,
+    event_name,
+    order_status = tostring(payload.order_status),
+    station_id,
+    delay_minutes = todouble(payload.delay_minutes),
+    severity,
+    payload
+""".strip(),
+    ),
+    (
+        "RouteKitchenEvents",
+        """
+raw_restaurant_events
+| where event_name == "kitchen.station.updated"
+| project
+    event_time,
+    event_id,
+    station_id,
+    station_status = tostring(payload.station_status),
+    queue_size = tolong(payload.queue_size),
+    capacity = tolong(payload.capacity),
+    severity,
+    payload
+""".strip(),
+    ),
+    (
+        "RouteInventoryEvents",
+        """
+raw_restaurant_events
+| where event_name == "inventory.level.changed"
+| project
+    event_time,
+    event_id,
+    ingredient_id,
+    stock_pct = todouble(payload.stock_pct),
+    threshold_pct = todouble(payload.threshold_pct),
+    severity,
+    payload
+""".strip(),
+    ),
+    (
+        "RouteAgentEvents",
+        """
+raw_restaurant_events
+| where event_name startswith "agent."
+| project
+    event_time,
+    event_id,
+    recommendation_id = tostring(payload.recommendation_id),
+    order_id,
+    priority = toint(payload.priority),
+    confidence = todouble(payload.confidence),
+    severity,
+    payload
+""".strip(),
+    ),
+    (
+        "RouteApprovalEvents",
+        """
+raw_restaurant_events
+| where event_name startswith "approval."
+| project
+    event_time,
+    event_id,
+    recommendation_id = tostring(payload.recommendation_id),
+    approver = tostring(payload.approver),
+    approval_status = tostring(payload.approval_status),
+    severity,
+    payload
+""".strip(),
+    ),
+    (
+        "RouteActionEvents",
+        """
+raw_restaurant_events
+| where event_name startswith "action."
+| project
+    event_time,
+    event_id,
+    action_id = tostring(payload.action_id),
+    action_type = event_name,
+    action_status = tostring(payload.action_status),
+    severity,
+    payload
+""".strip(),
+    ),
+]
+
+UPDATE_POLICIES = [
+    ("order_events", "RouteOrderEvents"),
+    ("kitchen_events", "RouteKitchenEvents"),
+    ("inventory_events", "RouteInventoryEvents"),
+    ("agent_events", "RouteAgentEvents"),
+    ("approval_events", "RouteApprovalEvents"),
+    ("action_events", "RouteActionEvents"),
 ]
 
 
@@ -39,8 +150,24 @@ def deploy_schema(query_service_uri: str, database_name: str) -> None:
             query_service_uri,
             database_name,
             f".alter table {table_name} policy retention '{{\"SoftDeletePeriod\":\"30.00:00:00\",\"Recoverability\":\"Enabled\"}}'",
-    )
+        )
         run_kusto_management(query_service_uri, database_name, f".alter table {table_name} policy caching hot = 7d")
+
+    for function_name, body in FUNCTIONS:
+        run_kusto_management(
+            query_service_uri,
+            database_name,
+            f".create-or-alter function with (folder='Routing', docstring='Route raw restaurant events') {function_name}() {{\n{body}\n}}",
+        )
+
+    for table_name, function_name in UPDATE_POLICIES:
+        policy = (
+            "["
+            f'{{"IsEnabled":true,"Source":"raw_restaurant_events","Query":"{function_name}()",'
+            '"IsTransactional":true,"PropagateIngestionProperties":false}'
+            "]"
+        )
+        run_kusto_management(query_service_uri, database_name, f".alter table {table_name} policy update @'{policy}'")
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -72,7 +199,7 @@ def main() -> None:
         return
 
     deploy_schema(query_service_uri, database_name)
-    print("Table creation and policies completed.")
+    print("Table creation, functions, and policies completed.")
 
 
 if __name__ == "__main__":

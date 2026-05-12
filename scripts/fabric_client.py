@@ -9,6 +9,13 @@ from urllib.error import HTTPError
 from urllib.parse import urljoin
 from urllib.request import Request, urlopen
 
+try:
+    from dotenv import load_dotenv
+except ImportError:
+    load_dotenv = None
+
+if load_dotenv:
+    load_dotenv()
 
 FABRIC_API_BASE = os.environ.get("FABRIC_API_BASE", "https://api.fabric.microsoft.com/v1").rstrip("/")
 FABRIC_RESOURCE = "https://api.fabric.microsoft.com"

@@ -1,0 +1,57 @@
+// Raw event timeline for troubleshooting
+raw_restaurant_events
+| project event_time, event_name, entity_type, entity_id, order_id, station_id, ingredient_id, channel, severity, payload
+| order by event_time desc
+
+// Simple condition: delayed orders with high station queue
+order_events
+| where event_name == "order.prep.delayed"
+| extend queue_size = tolong(payload.queue_size)
+| where delay_minutes >= 5 and queue_size >= 7
+| project event_time, order_id, channel, station_id, delay_minutes, queue_size, severity
+| order by event_time desc
+
+// Simple condition: critical inventory
+inventory_events
+| where stock_pct <= threshold_pct
+| project event_time, ingredient_id, stock_pct, threshold_pct, severity
+| order by event_time desc
+
+// Simple condition: sustained station saturation in 5-minute windows
+kitchen_events
+| summarize max_queue=max(queue_size), avg_queue=avg(queue_size), events=count() by station_id, bin(event_time, 5m)
+| where max_queue >= 7 or avg_queue >= 6
+| order by event_time desc
+
+// Complex condition candidates for Operations Agent
+let DelayedOrders =
+    order_events
+    | where event_name == "order.prep.delayed"
+    | extend queue_size = tolong(payload.queue_size)
+    | where delay_minutes >= 5 and queue_size >= 7
+    | project order_id, channel, station_id, delay_time=event_time, delay_minutes, queue_size;
+let NegativeSignals =
+    order_events
+    | where event_name == "customer.sentiment.signal"
+    | extend sentiment = tostring(payload.sentiment), reason = tostring(payload.reason)
+    | where sentiment == "negative"
+    | project order_id, sentiment_time=event_time, sentiment, reason;
+let CriticalStock =
+    inventory_events
+    | where stock_pct <= threshold_pct
+    | summarize arg_max(event_time, *) by ingredient_id
+    | project ingredient_id, stock_pct, threshold_pct;
+DelayedOrders
+| join kind=leftouter NegativeSignals on order_id
+| extend has_negative_signal = isnotempty(sentiment)
+| extend requires_agent_review = has_negative_signal or delay_minutes >= 8
+| where requires_agent_review
+| project delay_time, order_id, channel, station_id, delay_minutes, queue_size, sentiment, reason
+| order by delay_time desc
+
+// Traceability: recommendations, approvals, actions
+union
+    (agent_events | project event_time, event_name="agent.recommendation.created", entity_id=recommendation_id, order_id, severity, payload),
+    (approval_events | project event_time, event_name=strcat("approval.", approval_status), entity_id=recommendation_id, order_id="", severity, payload),
+    (action_events | project event_time, event_name=action_type, entity_id=action_id, order_id="", severity, payload)
+| order by event_time desc

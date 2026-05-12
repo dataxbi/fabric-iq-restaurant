@@ -18,6 +18,7 @@ Event Hub (Custom Endpoint)
 Eventstream (Restaurant)
     ↓
 Eventhouse (RTI Database)
+    ├── raw_restaurant_events (landing)
     ├── order_events (transactional)
     ├── kitchen_events (station state)
     ├── inventory_events (stock changes)
@@ -35,6 +36,11 @@ fabric-iq-restaurant/
 ├── README.md                           # This file
 ├── specs/
 │   └── especificaciones.md            # Technical specification (v1.0)
+├── config/
+│   ├── activator_rules.json           # Activator rule design
+│   └── operations_agent_playbook.json # Operations Agent setup guidance
+├── kql/
+│   └── operational_queries.kql        # Dashboard and condition queries
 ├── scripts/
 │   ├── fabric_client.py               # Fabric REST client wrapper
 │   ├── bootstrap_fabric.py            # Create Fabric resources
@@ -136,7 +142,7 @@ py scripts/eventhouse_schema.py
 
 ### Configure Eventstream Topology
 
-Set up the data flow from Event Hub to Eventhouse:
+Set up the data flow from Event Hub to the raw landing `raw_restaurant_events` table in Eventhouse:
 
 ```bash
 py scripts/configure_eventstream.py --recreate --source-type CustomEndpoint
@@ -148,21 +154,22 @@ Options:
 
 ### Send Demo Events
 
-Publish demo events to the Event Hub:
+Publish a peak-hour demo scenario to the Event Hub:
 
 ```bash
-py scripts/send_eventstream_events.py --count 100 --interval-seconds 0.5
+py scripts/send_eventstream_events.py --scenario peak --orders 12 --interval-seconds 0.5
 ```
 
 Options:
-- `--count`: Number of events to send (default: 20)
+- `--orders`: Number of synthetic orders to simulate (default: 12)
+- `--scenario`: `normal`, `peak`, or `stock-critical`
 - `--interval-seconds`: Delay between events in seconds (default: 1.0)
 - `--connection-string`: Override connection string (optional; uses `EVENTSTREAM_EVENTHUB_CONNECTION_STRING` from `.env`)
 
 **Example**: Send 50 events with 0.1-second intervals:
 
 ```bash
-py scripts/send_eventstream_events.py --count 50 --interval-seconds 0.1
+py scripts/send_eventstream_events.py --scenario stock-critical --orders 8 --interval-seconds 0.1
 ```
 
 ## Key Scripts
@@ -195,7 +202,9 @@ Provisioning script for Fabric resources:
 ### `eventhouse_schema.py`
 
 Defines KQL tables with:
+- **Raw landing table**: `raw_restaurant_events`
 - **Operational tables**: `order_events`, `kitchen_events`, `inventory_events`, `agent_events`, `approval_events`, `action_events`
+- **Routing logic**: KQL functions and update policies that distribute raw events to operational tables
 - **Retention policies**: Soft delete after 30 days
 - **Caching policies**: Hot cache for recent data
 
@@ -203,30 +212,32 @@ Defines KQL tables with:
 
 Sets up Eventstream topology:
 - **Source**: Custom Event Hub endpoint or sample data
-- **Destination**: KQL table `order_events`
+- **Destination**: KQL table `raw_restaurant_events`
 - **Format**: JSON with automatic schema detection
 
 ### `send_eventstream_events.py`
 
 Event generator using Azure Event Hub SDK:
-- Generates synthetic order events (order ID, channel, status, etc.)
+- Generates synthetic restaurant events for orders, kitchen stations, inventory, delays, sentiment, and payments
 - Batches events for efficiency
 - Sends via Event Hub producer client
 
 **Event schema**:
 ```json
 {
-  "event_id": "evt-00001",
+  "event_id": "evt-000001",
   "event_time": "2026-05-12T10:30:00Z",
+  "event_name": "order.prep.delayed",
+  "entity_type": "order",
+  "entity_id": "ORD-1001",
   "order_id": "ORD-1001",
   "channel": "delivery",
-  "event_name": "order.created",
-  "order_status": "created",
-  "station_id": "kitchen-main",
-  "delay_minutes": 0.0,
+  "station_id": "grill",
+  "ingredient_id": "",
+  "severity": "warning",
   "payload": {
-    "items": 3,
-    "priority": "high"
+    "delay_minutes": 8.0,
+    "queue_size": 9
   }
 }
 ```
@@ -244,9 +255,10 @@ py scripts/eventhouse_schema.py
 py scripts/configure_eventstream.py --recreate --source-type CustomEndpoint
 
 # 4. Send demo events
-py scripts/send_eventstream_events.py --count 100 --interval-seconds 0.5
+py scripts/send_eventstream_events.py --scenario peak --orders 12 --interval-seconds 0.5
 
 # 5. Query data (in Fabric portal)
+# KQL: raw_restaurant_events | count
 # KQL: order_events | count
 ```
 
@@ -257,7 +269,7 @@ py scripts/send_eventstream_events.py --count 100 --interval-seconds 0.5
 This is a temporary authentication issue. Retry the command:
 
 ```bash
-py scripts/send_eventstream_events.py --count 20 --interval-seconds 0.5
+py scripts/send_eventstream_events.py --scenario peak --orders 12 --interval-seconds 0.5
 ```
 
 ### "Missing EVENTSTREAM_EVENTHUB_CONNECTION_STRING"
@@ -275,7 +287,8 @@ Check that:
 
 1. Verify Event Hub is receiving events: Check Azure Portal → Event Hub Namespace → Metrics
 2. Verify Eventstream source is configured: `py scripts/configure_eventstream.py --recreate --source-type CustomEndpoint`
-3. Check KQL table is receiving: Query in KQL editor → `order_events | count`
+3. Check the raw KQL table is receiving: Query in KQL editor → `raw_restaurant_events | count`
+4. Check update policies are routing rows: Query in KQL editor → `order_events | count`, `kitchen_events | count`, `inventory_events | count`
 
 ## Next Steps
 

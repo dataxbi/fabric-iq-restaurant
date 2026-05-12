@@ -20,7 +20,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--eventstream-name", default=None, help="Eventstream display name")
     parser.add_argument("--eventhouse-name", default=None, help="Eventhouse display name")
     parser.add_argument("--kql-database-name", default=None, help="KQL database display name")
-    parser.add_argument("--target-table", default="order_events", help="KQL destination table name")
+    parser.add_argument("--target-table", default="raw_restaurant_events", help="KQL raw landing destination table name")
     parser.add_argument(
         "--source-type",
         default="CustomEndpoint",

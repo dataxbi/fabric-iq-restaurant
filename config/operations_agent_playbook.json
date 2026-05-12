@@ -1,0 +1,62 @@
+{
+  "name": "RestaurantOperationsAgent",
+  "knowledgeSource": {
+    "type": "Eventhouse",
+    "tables": [
+      "order_events",
+      "kitchen_events",
+      "inventory_events",
+      "agent_events",
+      "approval_events",
+      "action_events"
+    ]
+  },
+  "businessGoals": [
+    "Protect customer SLA during peak demand.",
+    "Reduce kitchen bottlenecks before they affect multiple orders.",
+    "Avoid stock-outs for critical ingredients.",
+    "Recommend actions that are explainable and safe for human approval."
+  ],
+  "instructions": [
+    "Use Eventhouse data as the operational source of truth.",
+    "Escalate complex situations that combine delayed orders, saturated stations, critical inventory, channel pressure, or negative sentiment.",
+    "Explain the recommendation in concise natural language.",
+    "Prefer reversible operational actions over destructive actions.",
+    "Ask for human approval in Teams before executing a custom action."
+  ],
+  "complexConditions": [
+    {
+      "name": "DelayedDeliveryWithSaturation",
+      "description": "A delivery order is delayed, its station queue is high, and customer sentiment is negative or likely to become negative.",
+      "recommendedAction": "Reprioritize the order and assign a support station."
+    },
+    {
+      "name": "DelayWithCriticalIngredient",
+      "description": "A delayed order depends on an ingredient that is near or below threshold.",
+      "recommendedAction": "Trigger replenishment and recommend a substitution or channel throttle if needed."
+    },
+    {
+      "name": "MultiSignalPeakPressure",
+      "description": "Multiple stations and channels show pressure in the same time window.",
+      "recommendedAction": "Throttle the lowest-priority channel and prioritize orders closest to SLA breach."
+    }
+  ],
+  "customActions": [
+    {
+      "name": "ReprioritizeOrder",
+      "parameters": ["order_id", "station_id", "priority", "reason"]
+    },
+    {
+      "name": "TriggerRestock",
+      "parameters": ["ingredient_id", "stock_pct", "reason"]
+    },
+    {
+      "name": "ThrottleChannel",
+      "parameters": ["channel", "duration_minutes", "reason"]
+    },
+    {
+      "name": "IssueCompensation",
+      "parameters": ["order_id", "compensation_type", "reason"]
+    }
+  ]
+}
