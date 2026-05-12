@@ -1,5 +1,6 @@
 import json
 import os
+import shutil
 import subprocess
 import time
 from dataclasses import dataclass
@@ -48,8 +49,16 @@ def read_bool_env(name: str, default: bool = False) -> bool:
 
 
 def get_azure_access_token(resource: str) -> str:
+    az_command = shutil.which("az") or shutil.which("az.cmd")
+    if not az_command:
+        default_az_cmd = r"C:\Program Files\Microsoft SDKs\Azure\CLI2\wbin\az.cmd"
+        if os.path.exists(default_az_cmd):
+            az_command = default_az_cmd
+    if not az_command:
+        raise FabricConfigError("Azure CLI not found in PATH. Install Azure CLI and run az login.")
+
     command = [
-        "az",
+        az_command,
         "account",
         "get-access-token",
         "--resource",
@@ -155,10 +164,13 @@ class FabricClient:
         location = headers.get("Location") or headers.get("location")
         if location:
             self.poll_operation(location)
-        created = self.find_item(workspace_id, collection, payload["displayName"])
-        if not created:
-            raise FabricApiError(f"Could not find created item {payload['displayName']} in {collection}")
-        return created
+        deadline = time.time() + 90
+        while time.time() < deadline:
+            created = self.find_item(workspace_id, collection, payload["displayName"])
+            if created:
+                return created
+            time.sleep(5)
+        raise FabricApiError(f"Could not find created item {payload['displayName']} in {collection}")
 
     def ensure_item(self, workspace_id: str, collection: str, display_name: str, extra: dict[str, Any] | None = None) -> dict[str, Any]:
         existing = self.find_item(workspace_id, collection, display_name)
@@ -182,6 +194,71 @@ class FabricClient:
         if not query_service_uri:
             raise FabricApiError(f"Eventhouse {eventhouse_id} does not expose queryServiceUri")
         return query_service_uri.rstrip("/")
+
+    def update_eventstream_definition(
+        self,
+        workspace_id: str,
+        eventstream_id: str,
+        definition_parts: list[dict[str, Any]],
+        update_metadata: bool = False,
+    ) -> None:
+        query = "true" if update_metadata else "false"
+        path = f"/workspaces/{workspace_id}/eventstreams/{eventstream_id}/updateDefinition?updateMetadata={query}"
+        status, headers, body = self._request(
+            "POST",
+            path,
+            {"definition": {"parts": definition_parts}},
+        )
+        if status in {200, 201}:
+            return
+        location = headers.get("Location") or headers.get("location")
+        if location:
+            self.poll_operation(location)
+            return
+        raise FabricApiError(f"Unexpected response updating eventstream definition: status={status}, body={body}")
+
+    def delete_item(self, workspace_id: str, collection: str, item_id: str) -> None:
+        status, headers, body = self._request("DELETE", f"/workspaces/{workspace_id}/{collection}/{item_id}")
+        if status in {200, 202, 204}:
+            location = headers.get("Location") or headers.get("location")
+            if location:
+                self.poll_operation(location)
+            return
+        raise FabricApiError(f"Unexpected response deleting {collection}/{item_id}: status={status}, body={body}")
+
+    def create_item_with_definition(
+        self,
+        workspace_id: str,
+        display_name: str,
+        item_type: str,
+        definition_parts: list[dict[str, Any]],
+        description: str = "",
+    ) -> dict[str, Any]:
+        payload: dict[str, Any] = {
+            "displayName": display_name,
+            "type": item_type,
+            "definition": {"parts": definition_parts},
+        }
+        if description:
+            payload["description"] = description
+
+        status, headers, body = self._request("POST", f"/workspaces/{workspace_id}/items", payload)
+        if status in {200, 201} and isinstance(body, dict) and body.get("id"):
+            return body
+
+        location = headers.get("Location") or headers.get("location")
+        if location:
+            self.poll_operation(location)
+
+        # item list collections are lower camel with plural; for Eventstream this is "eventstreams"
+        collection = f"{item_type[0].lower()}{item_type[1:]}s"
+        deadline = time.time() + 120
+        while time.time() < deadline:
+            created = self.find_item(workspace_id, collection, display_name)
+            if created:
+                return created
+            time.sleep(5)
+        raise FabricApiError(f"Could not find created item {display_name} in {collection}")
 
     def create_or_get_eventhouse_database(self, workspace_id: str, eventhouse_id: str, database_name: str) -> dict[str, Any]:
         existing = self.find_item(workspace_id, "kqlDatabases", database_name)
