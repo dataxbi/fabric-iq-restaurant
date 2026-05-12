@@ -4,11 +4,12 @@ A Real-Time Intelligence demonstration for a self-managing restaurant system usi
 
 ## Overview
 
-This project demonstrates a complete end-to-end solution for a restaurant that leverages:
+This project demonstrates an end-to-end Real-Time Intelligence flow for a restaurant that leverages:
 - **Real-time Event Ingestion**: Azure Event Hub → Fabric Eventstream → KQL Database
 - **Operational Source of Truth**: Eventhouse/KQL tables for live order, kitchen, inventory, agent, approval, and action events
 - **Simple Automation**: Fabric Activator for objective threshold-based conditions
 - **Complex Recommendations**: Operations Agent for contextual recommendations and human approval in Teams
+- **Operational Visibility**: Real-Time Dashboard over KQL tables
 
 ## Architecture
 
@@ -26,7 +27,7 @@ Eventhouse (RTI Database)
     ├── approval_events (human approvals)
     └── action_events (executed actions)
     ↓
-Fabric Activator + Operations Agent
+Real-Time Dashboard + Fabric Activator + Operations Agent
 ```
 
 ## Project Structure
@@ -103,11 +104,12 @@ cp .env.example .env
 Edit `.env`:
 
 ```env
-FABRIC_WORKSPACE_NAME=Fabric_RTI_Restaurant
+FABRIC_WORKSPACE_NAME=Fabric_IQ_Restaurant
 FABRIC_EVENTHOUSE_NAME=restaurant_eventhouse
 FABRIC_KQL_DATABASE_NAME=restaurant_rti
 FABRIC_EVENTSTREAM_NAME=restaurant_eventstream
 EVENTSTREAM_EVENTHUB_CONNECTION_STRING=Endpoint=sb://...;SharedAccessKeyName=...;SharedAccessKey=...;EntityPath=...
+FABRIC_ALERT_RECIPIENT=user@contoso.com
 ```
 
 **Note**: `EVENTSTREAM_EVENTHUB_CONNECTION_STRING` is obtained from the Event Hub namespace in Azure Portal:
@@ -131,7 +133,7 @@ Create Eventhouse, KQL Database, Eventstream, and the operational KQL schema:
 py scripts/bootstrap_fabric.py
 ```
 
-This script is **idempotent**—it checks if resources exist before creating them.
+This script is **idempotent**: it checks whether resources exist before creating them.
 
 ### Create KQL Tables and Schema
 
@@ -163,10 +165,21 @@ py scripts/configure_fabric_artifacts.py
 
 The script uses Fabric REST APIs because Operations Agent is not yet exposed as a first-class path type in the current `fab` CLI. The installed `fab` CLI can list/create `KQLDashboard` and `Reflex` items and can call the Operations Agent endpoint through `fab api`, but the Python script keeps the flow consistent with the rest of the repo.
 
-Current API coverage:
+Current scripted coverage:
 - KQL Dashboard: deploys `RealTimeDashboard.json` with six operational tiles over the KQL tables.
 - Activator/Reflex: deploys three KQL-backed rules for delayed orders, critical inventory, and delivery saturation, with Teams notifications routed to `FABRIC_ALERT_RECIPIENT` or the current Azure CLI user.
 - Operations Agent: deploys goals, instructions, and a KQL data source from `config/operations_agent_playbook.json`. Power Automate action wiring still needs UI completion because the current preview API accepted action definitions but then made `getDefinition` return HTTP 500 during testing.
+
+### Manual Fabric UI Steps
+
+Some RTI preview features require UI confirmation even after the item definition is deployed by script:
+
+1. Open the **Restaurant Operations RTI** Real-Time Dashboard and confirm the six tiles render without load errors.
+2. Open **Restaurant Operations Activator** and confirm the three rules are enabled. If Fabric asks for permissions, authorize Teams notifications for the configured recipient.
+3. Open **RestaurantOperationsAgent** and review the goals, instructions, and KQL data source.
+4. In **RestaurantOperationsAgent**, attach the Power Automate or Teams approval actions manually, then set the agent to run only after the action connection is confirmed.
+
+Do not enable scripted Operations Agent actions by default. The script has an opt-in `--include-agent-actions` flag, but current preview behavior can accept the action definition and then make `getDefinition` fail. Keep the default stable configuration unless testing the preview API intentionally.
 
 ### Send Demo Events
 
@@ -204,7 +217,7 @@ Core wrapper for Fabric and Kusto APIs. Handles:
 from scripts.fabric_client import FabricClient
 
 client = FabricClient()
-workspace = client.resolve_workspace("Fabric_RTI_Restaurant")
+workspace = client.resolve_workspace("Fabric_IQ_Restaurant")
 eventhouse = client.find_item(workspace["id"], "eventhouses", "restaurant_eventhouse")
 ```
 
@@ -270,10 +283,13 @@ py scripts/eventhouse_schema.py
 # 3. Configure Eventstream
 py scripts/configure_eventstream.py --recreate --source-type CustomEndpoint
 
-# 4. Send demo events
+# 4. Configure RTI dashboard, Activator, and Operations Agent
+py scripts/configure_fabric_artifacts.py
+
+# 5. Send demo events
 py scripts/send_eventstream_events.py --scenario peak --orders 12 --interval-seconds 0.5
 
-# 5. Query data (in Fabric portal)
+# 6. Query data (in Fabric portal)
 # KQL: raw_restaurant_events | count
 # KQL: order_events | count
 ```
@@ -306,12 +322,29 @@ Check that:
 3. Check the raw KQL table is receiving: Query in KQL editor → `raw_restaurant_events | count`
 4. Check update policies are routing rows: Query in KQL editor → `order_events | count`, `kitchen_events | count`, `inventory_events | count`
 
-## Next Steps
+### Real-Time Dashboard load errors
 
-- **Real-time Dashboard**: Create a Fabric RTI dashboard on the operational KQL tables
-- **Operational Rules**: Implement Activator rules for order alerts, stock-critical events, and kitchen automation
-- **Operations Agent**: Configure Eventhouse as the knowledge source and define the recommendation playbook
-- **Data Quality**: Add validation rules and monitoring
+The dashboard definition must use the current Fabric schema:
+- Tiles reference queries with `tiles[].queryRef`.
+- KQL text lives in `queries[]`.
+- `queries[].dataSource.kind` is `inline`.
+- Tiles must not include deprecated `usedParamVariables`.
+
+Run `py scripts/configure_fabric_artifacts.py` to redeploy the corrected dashboard definition.
+
+### Operations Agent actions are missing
+
+This is expected. The script deploys the stable Operations Agent configuration without actions. Complete Power Automate or Teams approval action wiring manually in the Operations Agent UI.
+
+## Remaining Manual Work
+
+- Review Teams notification permissions in Activator.
+- Attach Operations Agent actions in the Fabric UI.
+- Run a final end-to-end demo and capture evidence:
+  - `raw_restaurant_events | count`
+  - `order_events | count`
+  - `inventory_events | where stock_pct <= threshold_pct`
+  - Dashboard tiles updating after event generation
 
 ## Technical Details
 
@@ -351,6 +384,7 @@ else:
 | `FABRIC_KQL_DATABASE_NAME` | Yes | KQL database name |
 | `FABRIC_EVENTSTREAM_NAME` | Yes | Eventstream name |
 | `EVENTSTREAM_EVENTHUB_CONNECTION_STRING` | Yes | Event Hub connection string (from portal) |
+| `FABRIC_ALERT_RECIPIENT` | No | Teams/email recipient for Activator and Operations Agent notifications; defaults to current Azure CLI user |
 
 ## References
 
