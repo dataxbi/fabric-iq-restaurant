@@ -46,6 +46,7 @@ fabric-iq-restaurant/
 │   ├── bootstrap_fabric.py            # Create Fabric resources
 │   ├── eventhouse_schema.py           # KQL table definitions
 │   ├── configure_eventstream.py       # Configure Eventstream topology
+│   ├── configure_fabric_artifacts.py  # Create RTI dashboard, Activator, and Operations Agent items
 │   └── send_eventstream_events.py     # Send demo events to Event Hub
 ├── .env.example                        # Environment variables template
 └── .gitignore                          # Git ignore patterns
@@ -151,6 +152,21 @@ py scripts/configure_eventstream.py --recreate --source-type CustomEndpoint
 Options:
 - `--recreate`: Rebuild the Eventstream definition from scratch
 - `--source-type`: `CustomEndpoint` (Event Hub) or `SampleData` (demo data)
+
+### Create RTI UI Artifacts
+
+Create or update the Real-Time Dashboard, Activator item, and Operations Agent item:
+
+```bash
+py scripts/configure_fabric_artifacts.py
+```
+
+The script uses Fabric REST APIs because Operations Agent is not yet exposed as a first-class path type in the current `fab` CLI. The installed `fab` CLI can list/create `KQLDashboard` and `Reflex` items and can call the Operations Agent endpoint through `fab api`, but the Python script keeps the flow consistent with the rest of the repo.
+
+Current API coverage:
+- KQL Dashboard: deploys `RealTimeDashboard.json` with six operational tiles over the KQL tables.
+- Activator/Reflex: deploys three KQL-backed rules for delayed orders, critical inventory, and delivery saturation, with Teams notifications routed to `FABRIC_ALERT_RECIPIENT` or the current Azure CLI user.
+- Operations Agent: deploys goals, instructions, and a KQL data source from `config/operations_agent_playbook.json`. Power Automate action wiring still needs UI completion because the current preview API accepted action definitions but then made `getDefinition` return HTTP 500 during testing.
 
 ### Send Demo Events
 

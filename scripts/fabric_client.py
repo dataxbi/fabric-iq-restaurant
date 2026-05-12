@@ -224,6 +224,36 @@ class FabricClient:
             return
         raise FabricApiError(f"Unexpected response updating eventstream definition: status={status}, body={body}")
 
+    def update_item_definition(
+        self,
+        workspace_id: str,
+        item_id: str,
+        definition_parts: list[dict[str, Any]],
+        definition_format: str | None = None,
+        update_metadata: bool = False,
+        collection: str | None = None,
+    ) -> None:
+        definition: dict[str, Any] = {"parts": definition_parts}
+        if definition_format:
+            definition["format"] = definition_format
+        query = "true" if update_metadata else "false"
+        if collection:
+            path = f"/workspaces/{workspace_id}/{collection}/{item_id}/updateDefinition?updateMetadata={query}"
+        else:
+            path = f"/workspaces/{workspace_id}/items/{item_id}/updateDefinition?updateMetadata={query}"
+        status, headers, body = self._request(
+            "POST",
+            path,
+            {"definition": definition},
+        )
+        if status in {200, 201}:
+            return
+        location = headers.get("Location") or headers.get("location")
+        if location:
+            self.poll_operation(location)
+            return
+        raise FabricApiError(f"Unexpected response updating item definition: status={status}, body={body}")
+
     def delete_item(self, workspace_id: str, collection: str, item_id: str) -> None:
         status, headers, body = self._request("DELETE", f"/workspaces/{workspace_id}/{collection}/{item_id}")
         if status in {200, 202, 204}:
@@ -240,11 +270,21 @@ class FabricClient:
         item_type: str,
         definition_parts: list[dict[str, Any]],
         description: str = "",
+        definition_format: str | None = None,
+        collection: str | None = None,
     ) -> dict[str, Any]:
+        existing_collection = collection or f"{item_type[0].lower()}{item_type[1:]}s"
+        existing = self.find_item(workspace_id, existing_collection, display_name)
+        if existing:
+            return existing
+
+        definition: dict[str, Any] = {"parts": definition_parts}
+        if definition_format:
+            definition["format"] = definition_format
         payload: dict[str, Any] = {
             "displayName": display_name,
             "type": item_type,
-            "definition": {"parts": definition_parts},
+            "definition": definition,
         }
         if description:
             payload["description"] = description
@@ -257,15 +297,13 @@ class FabricClient:
         if location:
             self.poll_operation(location)
 
-        # item list collections are lower camel with plural; for Eventstream this is "eventstreams"
-        collection = f"{item_type[0].lower()}{item_type[1:]}s"
         deadline = time.time() + 120
         while time.time() < deadline:
-            created = self.find_item(workspace_id, collection, display_name)
+            created = self.find_item(workspace_id, existing_collection, display_name)
             if created:
                 return created
             time.sleep(5)
-        raise FabricApiError(f"Could not find created item {display_name} in {collection}")
+        raise FabricApiError(f"Could not find created item {display_name} in {existing_collection}")
 
     def create_or_get_eventhouse_database(self, workspace_id: str, eventhouse_id: str, database_name: str) -> dict[str, Any]:
         existing = self.find_item(workspace_id, "kqlDatabases", database_name)
