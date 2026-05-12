@@ -1,0 +1,30 @@
+table fact_orders
+	lineageTag: "84b53c8f-1234-4567-89ab-cdef01234567"
+	
+	column order_id
+		dataType: string
+	
+	column order_date
+		dataType: datetime
+	
+	column channel
+		dataType: string
+	
+	column status
+		dataType: string
+	
+	column delay_minutes
+		dataType: double
+	
+	column is_delayed
+		dataType: boolean
+	
+	column is_on_sla
+		dataType: boolean
+	
+	column created_ts
+		dataType: datetime
+	
+	partition fact_orders = m
+		mode: import
+		source = "SELECT * FROM fact_orders"

@@ -1,0 +1,18 @@
+table dim_stations
+	lineageTag: "b7d85d0g-4567-7890-12cd-cdef34567890"
+	
+	column station_id
+		dataType: string
+	
+	column station_name
+		dataType: string
+	
+	column capacity
+		dataType: int64
+	
+	column created_ts
+		dataType: datetime
+	
+	partition dim_stations = m
+		mode: import
+		source = "SELECT * FROM dim_stations"

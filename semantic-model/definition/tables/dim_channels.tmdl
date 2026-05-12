@@ -1,0 +1,18 @@
+table dim_channels
+	lineageTag: "c8e96e1h-5678-8901-23de-cdef45678901"
+	
+	column channel_id
+		dataType: string
+	
+	column channel_name
+		dataType: string
+	
+	column sla_minutes
+		dataType: int64
+	
+	column created_ts
+		dataType: datetime
+	
+	partition dim_channels = m
+		mode: import
+		source = "SELECT * FROM dim_channels"
