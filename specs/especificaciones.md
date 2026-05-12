@@ -1,4 +1,4 @@
-# Especificación de Demo: Restaurante Autogestionado con Microsoft Fabric IQ
+# Especificación de Demo: Restaurante Autogestionado con Microsoft Fabric Real-Time Intelligence
 
 **Versión**: 1.0  
 **Autor**: Nelson López  
@@ -37,11 +37,11 @@ Diseñar y ejecutar una demo sencilla en **Microsoft Fabric** que simule un rest
 5. El motor de reglas decide y ejecuta acciones automáticas.
 6. Se completa pedido y cobro (`payment.completed`).
 
-### RTI + Operations Agent
+### RTI + Activator + Operations Agent
 
 1. **RTI (Eventstream + Eventhouse/KQL)**: ingestar y analizar eventos en vivo.
-2. **Fabric Activator / reglas de ontología**: detectar condiciones operativas (retraso, cola alta, stock crítico) y preparar acciones.
-3. **Operations Agent**: interpretar contexto, recomendar acción y gestionar aprobación/ejecución.
+2. **Fabric Activator**: detectar condiciones simples y objetivas (umbrales, retraso, cola alta, stock crítico) y disparar acciones técnicas.
+3. **Operations Agent**: evaluar condiciones complejas con contexto mixto, explicar la recomendación en lenguaje natural y gestionar aprobación/ejecución.
 
 ### Modo de operación del agente
 
@@ -54,9 +54,9 @@ Se usará **human-in-the-loop en Teams**:
 
 1. Scripts Python locales emiten eventos del restaurante.
 2. Eventstream enruta y transforma hacia Eventhouse.
-3. Ontology modela entidades (Pedido, Estación, Ingrediente) y propiedades.
-4. Reglas (Ontology + Activator) detectan condiciones.
-5. Operations Agent propone acción en Teams.
+3. Eventhouse/KQL Database actúa como fuente de conocimiento operacional.
+4. Fabric Activator evalúa reglas simples y dispara acciones automáticas o flujos.
+5. Operations Agent usa Eventhouse como knowledge source, propone acción en Teams y solicita aprobación cuando corresponde.
 6. Tras aprobación, se dispara la acción (Activator/Power Automate).
 7. Se guarda trazabilidad: evento -> condición -> recomendación -> aprobación -> acción -> resultado.
 
@@ -71,62 +71,24 @@ Se usará **human-in-the-loop en Teams**:
 
 Estas tablas guardan el detalle operativo en tiempo real y alimentan RTI/Eventhouse.
 
-### Modelo analítico mínimo
+### Modelo operacional en Eventhouse
 
-**Hechos**
-1. `fact_orders`
-2. `fact_kitchen_flow`
-3. `fact_inventory_movement`
-4. `fact_agent_decisions`
-5. `fact_action_execution`
+La demo usa tablas KQL operacionales, no un modelo semántico analítico:
 
-**Dimensiones**
-1. `dim_time`
-2. `dim_order`
-3. `dim_station`
-4. `dim_ingredient`
-5. `dim_channel`
-6. `dim_agent`
-7. `dim_action`
-8. `dim_approval_status`
+1. `order_events`: ciclo de vida de pedidos.
+2. `kitchen_events`: estado de estaciones, colas y saturación.
+3. `inventory_events`: consumo, reposición y stock crítico.
+4. `agent_events`: recomendaciones del Operations Agent.
+5. `approval_events`: aprobaciones/rechazos humanos.
+6. `action_events`: acciones disparadas y resultado.
 
-**Medidas**
-1. `PedidosTotales`
-2. `PedidosAtrasados`
-3. `AtrasoMedioMinutos`
-4. `TiempoMedioCocinaMinutos`
-5. `ColaMediaEstacion`
-6. `PedidosEnSLA`
-7. `AccionesAprobadas`
-8. `AccionesEjecutadas`
-9. `StockCriticoAlertas`
-10. `RecomendacionesAgente`
+Consultas KQL principales:
 
-### Ontología (Fabric IQ)
-
-La ontología se construye sobre el modelo analítico y usa estas entidades:
-
-1. `Pedido`
-2. `LineaPedido`
-3. `EstacionCocina`
-4. `Ingrediente`
-5. `Canal`
-6. `Turno`
-7. `AgenteOperacion`
-8. `Recomendacion`
-9. `Aprobacion`
-10. `Accion`
-11. `EventoOperacion`
-
-Relaciones principales:
-1. `Pedido` tiene muchas `LineaPedido`.
-2. `Pedido` se procesa en `EstacionCocina`.
-3. `LineaPedido` consume `Ingrediente`.
-4. `Pedido` entra por `Canal`.
-5. `AgenteOperacion` genera `Recomendacion`.
-6. `Recomendacion` requiere `Aprobacion`.
-7. `Aprobacion` habilita `Accion`.
-8. `EventoOperacion` dispara reglas.
+1. Pedidos en riesgo de SLA por canal y estación.
+2. Estaciones con cola alta o saturación sostenida.
+3. Ingredientes bajo umbral crítico.
+4. Correlación entre retraso, saturación, stock bajo y sentimiento.
+5. Historial de recomendaciones, aprobaciones y acciones.
 
 ---
 
