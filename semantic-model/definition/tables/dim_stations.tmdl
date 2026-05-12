@@ -1,36 +1,36 @@
 table dim_stations
-	
+
 	column station_id
 		dataType: string
 		isKey
 		summarizeBy: none
 		sourceColumn: station_id
-	
+
 	column station_name
 		dataType: string
 		summarizeBy: none
 		sourceColumn: station_name
-	
+
 	column station_type
 		dataType: string
 		summarizeBy: none
 		sourceColumn: station_type
-	
+
 	column capacity
 		dataType: int64
 		summarizeBy: none
 		sourceColumn: capacity
-	
+
 	column is_active
 		dataType: boolean
 		summarizeBy: none
 		sourceColumn: is_active
-	
+
 	column created_at
 		dataType: datetime
 		summarizeBy: none
 		sourceColumn: created_at
-	
+
 	column updated_at
 		dataType: datetime
 		summarizeBy: none
