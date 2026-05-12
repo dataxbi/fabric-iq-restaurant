@@ -5,6 +5,11 @@ __pycache__/
 .mypy_cache/
 .ruff_cache/
 .env
+.fabric-ids.json
+workspace_id.txt
+lakehouse_id.txt
+semantic_model_payload.json
+.generated/
 *.log
 dist/
 build/

@@ -1,0 +1,115 @@
+{
+  "displayName": "RestaurantOperationsOntology",
+  "description": "Restaurant operations ontology with Eventhouse bindings",
+  "entityTypes": [
+    {
+      "name": "Order",
+      "displayName": "Pedido",
+      "description": "Restaurant order",
+      "properties": {
+        "order_id": {
+          "displayName": "Order ID",
+          "dataType": "string",
+          "isKey": true
+        },
+        "order_date": {
+          "displayName": "Order Date",
+          "dataType": "datetime"
+        },
+        "channel": {
+          "displayName": "Channel",
+          "dataType": "string"
+        },
+        "status": {
+          "displayName": "Status",
+          "dataType": "string"
+        },
+        "delay_minutes": {
+          "displayName": "Delay Minutes",
+          "dataType": "int64"
+        },
+        "is_delayed": {
+          "displayName": "Is Delayed",
+          "dataType": "bool"
+        },
+        "is_on_sla": {
+          "displayName": "On SLA",
+          "dataType": "bool"
+        }
+      },
+      "binding": {
+        "source": "fact_orders",
+        "sourceType": "Table",
+        "keyProperties": ["order_id"]
+      }
+    },
+    {
+      "name": "Station",
+      "displayName": "Estación de Cocina",
+      "description": "Kitchen station",
+      "properties": {
+        "station_id": {
+          "displayName": "Station ID",
+          "dataType": "string",
+          "isKey": true
+        },
+        "station_name": {
+          "displayName": "Station Name",
+          "dataType": "string"
+        },
+        "capacity": {
+          "displayName": "Capacity",
+          "dataType": "int64"
+        }
+      },
+      "binding": {
+        "source": "dim_stations",
+        "sourceType": "Table",
+        "keyProperties": ["station_id"]
+      }
+    },
+    {
+      "name": "Channel",
+      "displayName": "Canal de Pedidos",
+      "description": "Order channel",
+      "properties": {
+        "channel_id": {
+          "displayName": "Channel ID",
+          "dataType": "string",
+          "isKey": true
+        },
+        "channel_name": {
+          "displayName": "Channel Name",
+          "dataType": "string"
+        },
+        "sla_minutes": {
+          "displayName": "SLA Minutes",
+          "dataType": "int64"
+        }
+      },
+      "binding": {
+        "source": "dim_channels",
+        "sourceType": "Table",
+        "keyProperties": ["channel_id"]
+      }
+    }
+  ],
+  "relationships": [
+    {
+      "name": "Order_in_Station",
+      "displayName": "Order processed in Station",
+      "fromEntity": "Order",
+      "toEntity": "Station",
+      "fromCardinality": "Many",
+      "toCardinality": "One"
+    },
+    {
+      "name": "Order_from_Channel",
+      "displayName": "Order from Channel",
+      "fromEntity": "Order",
+      "toEntity": "Channel",
+      "fromCardinality": "Many",
+      "toCardinality": "One"
+    }
+  ]
+}

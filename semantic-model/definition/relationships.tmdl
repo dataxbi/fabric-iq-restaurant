@@ -1,0 +1,7 @@
+relationship fact_orders_dim_stations
+	fromColumn: fact_orders.station_id
+	toColumn: dim_stations.station_id
+
+relationship fact_orders_dim_channels
+	fromColumn: fact_orders.channel
+	toColumn: dim_channels.channel_id

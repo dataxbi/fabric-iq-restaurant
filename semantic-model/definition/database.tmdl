@@ -1,2 +1,3 @@
 database RestaurantAnalytics
-	compatibilityLevel: 1701
+	compatibilityLevel: 1702
+	compatibilityMode: powerBI

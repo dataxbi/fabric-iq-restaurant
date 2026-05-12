@@ -1,18 +1,44 @@
 table dim_channels
-	lineageTag: "c8e96e1h-5678-8901-23de-cdef45678901"
 	
 	column channel_id
 		dataType: string
+		isKey
+		summarizeBy: none
+		sourceColumn: channel_id
 	
 	column channel_name
 		dataType: string
+		summarizeBy: none
+		sourceColumn: channel_name
+	
+	column channel_type
+		dataType: string
+		summarizeBy: none
+		sourceColumn: channel_type
 	
 	column sla_minutes
 		dataType: int64
+		summarizeBy: none
+		sourceColumn: sla_minutes
 	
-	column created_ts
+	column priority_default
+		dataType: int64
+		summarizeBy: none
+		sourceColumn: priority_default
+	
+	column is_active
+		dataType: boolean
+		summarizeBy: none
+		sourceColumn: is_active
+	
+	column created_at
 		dataType: datetime
+		summarizeBy: none
+		sourceColumn: created_at
 	
-	partition dim_channels = m
-		mode: import
-		source = "SELECT * FROM dim_channels"
+	partition dim_channels = entity
+		mode: directLake
+		source
+			entityName: dim_channels
+			schemaName: dbo
+			expressionSource: DL_Lakehouse
