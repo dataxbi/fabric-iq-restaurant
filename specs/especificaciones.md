@@ -53,8 +53,8 @@ Se usará **human-in-the-loop en Teams**:
 ### Detalles de implementación
 
 1. Scripts Python locales emiten eventos del restaurante.
-2. Eventstream enruta y transforma hacia Eventhouse.
-3. Eventhouse/KQL Database actúa como fuente de conocimiento operacional.
+2. Eventstream enruta los eventos crudos hacia Eventhouse sin contener la lógica principal de clasificación.
+3. Eventhouse/KQL Database actúa como fuente de conocimiento operacional y aplica el modelo de distribución con funciones KQL y update policies.
 4. Fabric Activator evalúa reglas simples y dispara acciones automáticas o flujos.
 5. Operations Agent usa Eventhouse como knowledge source, propone acción en Teams y solicita aprobación cuando corresponde.
 6. Tras aprobación, se dispara la acción (Activator/Power Automate).
@@ -62,25 +62,29 @@ Se usará **human-in-the-loop en Teams**:
 
 ### Tablas transaccionales
 
-1. `order_events`
-2. `kitchen_events`
-3. `inventory_events`
-4. `agent_events`
-5. `approval_events`
-6. `action_events`
+1. `raw_restaurant_events`
+2. `order_events`
+3. `kitchen_events`
+4. `inventory_events`
+5. `agent_events`
+6. `approval_events`
+7. `action_events`
 
-Estas tablas guardan el detalle operativo en tiempo real y alimentan RTI/Eventhouse.
+`raw_restaurant_events` recibe el flujo crudo desde Eventstream. Las tablas operacionales derivadas guardan el detalle operativo normalizado en tiempo real y alimentan RTI/Eventhouse.
 
 ### Modelo operacional en Eventhouse
 
 La demo usa tablas KQL operacionales, no un modelo semántico analítico:
 
-1. `order_events`: ciclo de vida de pedidos.
-2. `kitchen_events`: estado de estaciones, colas y saturación.
-3. `inventory_events`: consumo, reposición y stock crítico.
-4. `agent_events`: recomendaciones del Operations Agent.
-5. `approval_events`: aprobaciones/rechazos humanos.
-6. `action_events`: acciones disparadas y resultado.
+1. `raw_restaurant_events`: landing/staging de eventos crudos recibidos desde Eventstream.
+2. `order_events`: ciclo de vida de pedidos.
+3. `kitchen_events`: estado de estaciones, colas y saturación.
+4. `inventory_events`: consumo, reposición y stock crítico.
+5. `agent_events`: recomendaciones del Operations Agent.
+6. `approval_events`: aprobaciones/rechazos humanos.
+7. `action_events`: acciones disparadas y resultado.
+
+El reparto desde `raw_restaurant_events` hacia las tablas operacionales se implementa en Eventhouse con funciones KQL y update policies. Eventstream se mantiene como capa de ingesta/enrutamiento y no como lugar principal para reglas de modelado operativo.
 
 Consultas KQL principales:
 
