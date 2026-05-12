@@ -1,13 +1,14 @@
-# Fabric IQ Restaurant Demo
+# Fabric Real-Time Intelligence Restaurant Demo
 
-A real-time intelligent orchestration (RTI) demonstration for a self-managing restaurant system using Microsoft Fabric, built on event-driven architecture and real-time analytics.
+A Real-Time Intelligence demonstration for a self-managing restaurant system using Microsoft Fabric, built on event-driven operations, Eventhouse, Fabric Activator, and Operations Agent.
 
 ## Overview
 
 This project demonstrates a complete end-to-end solution for a restaurant that leverages:
 - **Real-time Event Ingestion**: Azure Event Hub → Fabric Eventstream → KQL Database
-- **Real-time Analytics**: KQL queries on streaming order and operational data
-- **Automated Orchestration**: Rules and activators for restaurant operations
+- **Operational Source of Truth**: Eventhouse/KQL tables for live order, kitchen, inventory, agent, approval, and action events
+- **Simple Automation**: Fabric Activator for objective threshold-based conditions
+- **Complex Recommendations**: Operations Agent for contextual recommendations and human approval in Teams
 
 ## Architecture
 
@@ -18,14 +19,13 @@ Eventstream (Restaurant)
     ↓
 Eventhouse (RTI Database)
     ├── order_events (transactional)
-    ├── order_items (transactional)
-    ├── channels (reference)
-    ├── stations (reference)
-    ├── delays (metrics)
-    └── ...
+    ├── kitchen_events (station state)
+    ├── inventory_events (stock changes)
+    ├── agent_events (recommendations)
+    ├── approval_events (human approvals)
+    └── action_events (executed actions)
     ↓
-Lakehouse (Restaurant)
-    └── Analytical tables (Spark/SQL)
+Fabric Activator + Operations Agent
 ```
 
 ## Project Structure
@@ -82,7 +82,7 @@ pip install -r requirements.txt
 If `requirements.txt` is not available, install manually:
 
 ```bash
-pip install azure-fabric azure-eventhub python-dotenv
+pip install azure-eventhub python-dotenv
 ```
 
 ### 4. Configure Environment
@@ -96,8 +96,7 @@ cp .env.example .env
 Edit `.env`:
 
 ```env
-FABRIC_WORKSPACE_NAME=Fabric_IQ_Restaurant
-FABRIC_LAKEHOUSE_NAME=restaurant_lakehouse
+FABRIC_WORKSPACE_NAME=Fabric_RTI_Restaurant
 FABRIC_EVENTHOUSE_NAME=restaurant_eventhouse
 FABRIC_KQL_DATABASE_NAME=restaurant_rti
 FABRIC_EVENTSTREAM_NAME=restaurant_eventstream
@@ -119,7 +118,7 @@ az login
 
 ### Bootstrap Fabric Resources
 
-Create Lakehouse, Eventhouse, KQL Database, and Eventstream:
+Create Eventhouse, KQL Database, Eventstream, and the operational KQL schema:
 
 ```bash
 py scripts/bootstrap_fabric.py
@@ -182,21 +181,21 @@ Core wrapper for Fabric and Kusto APIs. Handles:
 from scripts.fabric_client import FabricClient
 
 client = FabricClient()
-workspace = client.resolve_workspace("Fabric_IQ_Restaurant")
-eventhouse = client.find_item("restaurant_eventhouse", workspace["id"])
+workspace = client.resolve_workspace("Fabric_RTI_Restaurant")
+eventhouse = client.find_item(workspace["id"], "eventhouses", "restaurant_eventhouse")
 ```
 
 ### `bootstrap_fabric.py`
 
 Provisioning script for Fabric resources:
-- Creates Lakehouse, Eventhouse, KQL Database, Eventstream
+- Creates Eventhouse, KQL Database, and Eventstream
 - Skips existing resources (idempotent)
 - Stores resource IDs in memory for dependent resources
 
 ### `eventhouse_schema.py`
 
 Defines KQL tables with:
-- **Transactional tables**: `order_events`, `order_items`, `channels`, `stations`, `delays`
+- **Operational tables**: `order_events`, `kitchen_events`, `inventory_events`, `agent_events`, `approval_events`, `action_events`
 - **Retention policies**: Soft delete after 30 days
 - **Caching policies**: Hot cache for recent data
 
@@ -280,9 +279,9 @@ Check that:
 
 ## Next Steps
 
-- **Real-time Dashboard**: Create Power BI or Fabric RTI dashboard on `order_events`
-- **Operational Rules**: Implement Activators for order alerts and kitchen automation
-- **Analytical Tables**: Populate fact and dimension tables in Lakehouse via Spark
+- **Real-time Dashboard**: Create a Fabric RTI dashboard on the operational KQL tables
+- **Operational Rules**: Implement Activator rules for order alerts, stock-critical events, and kitchen automation
+- **Operations Agent**: Configure Eventhouse as the knowledge source and define the recommendation playbook
 - **Data Quality**: Add validation rules and monitoring
 
 ## Technical Details
@@ -319,7 +318,6 @@ else:
 | Variable | Required | Description |
 |----------|----------|-------------|
 | `FABRIC_WORKSPACE_NAME` | Yes | Fabric workspace name |
-| `FABRIC_LAKEHOUSE_NAME` | Yes | Lakehouse name |
 | `FABRIC_EVENTHOUSE_NAME` | Yes | Eventhouse (KQL database) name |
 | `FABRIC_KQL_DATABASE_NAME` | Yes | KQL database name |
 | `FABRIC_EVENTSTREAM_NAME` | Yes | Eventstream name |
