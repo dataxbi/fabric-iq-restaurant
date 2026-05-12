@@ -1,11 +1,12 @@
 # GitHub Copilot Instructions
 
 ## Project goal
-Build a small Microsoft Fabric demo for a self-managing restaurant using:
-- Real-Time Intelligence for live events
-- Fabric Activator for simple rules
-- Operations Agent for the one complex LLM-driven recommendation
-- A real-time dashboard for live visibility
+Build a small Microsoft Fabric Real-Time Intelligence demo for a self-managing restaurant using:
+- Eventstream for live restaurant events
+- Eventhouse/KQL database as the operational source of truth
+- Fabric Activator for simple threshold-based conditions
+- Operations Agent for complex contextual recommendations and human approval in Teams
+- A real-time dashboard for live visibility and traceability
 
 ## Working principles
 - Keep the solution demo-sized and easy to explain.
@@ -13,6 +14,7 @@ Build a small Microsoft Fabric demo for a self-managing restaurant using:
 - Use workspace/item names from configuration; never hard-code IDs.
 - Keep secrets out of the repository. Local-only values belong in `.env`.
 - Treat `specs/especificaciones.md` as the source of truth for architecture and behavior.
+- Do not make Power BI semantic models or Ontology/Fabric IQ required for the main demo path.
 
 ## Implementation conventions
 - Use English for code comments and user-facing script output.
@@ -23,11 +25,12 @@ Build a small Microsoft Fabric demo for a self-managing restaurant using:
 
 ## Fabric provisioning target
 The scripts should prepare:
-- Lakehouse
 - Eventhouse
 - KQL database
 - Eventstream
-- Initial Eventhouse transaction tables
+- Initial operational KQL tables: `order_events`, `kitchen_events`, `inventory_events`, `agent_events`, `approval_events`, and `action_events`
+- Activator rules/actions for simple operational conditions
+- Operations Agent configuration guidance/playbook for complex conditions
 
 ## Security rules
 - Do not commit access tokens, IDs, connection strings, or workspace secrets.
@@ -43,4 +46,7 @@ The scripts should prepare:
 ## Suggested execution order
 1. Bootstrap Fabric resources by name.
 2. Create the Eventhouse schema.
-3. Load demo data later from the analytical pipeline.
+3. Configure Eventstream routing into Eventhouse.
+4. Configure Activator rules for simple conditions such as stock-critical, high queue, and delayed orders.
+5. Configure Operations Agent with Eventhouse as knowledge source for complex recommendations.
+6. Run the restaurant event simulator and verify the event -> condition -> recommendation/approval -> action trace.
