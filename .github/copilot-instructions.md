@@ -37,8 +37,10 @@ The scripts should prepare:
 
 ## KQL schema and stations
 - The `stations` table is the canonical reference for kitchen capacity. It defines each station's `max_capacity` (parallel processing slots, e.g. burners) and `avg_prep_minutes`.
-- Queue drain time formula: `(queue_size - max_capacity) * avg_prep_minutes / max_capacity`.
-- Join pattern: `kitchen_events | join kind=leftouter stations on station_id`.
+- Active order count per station: `order_events | where event_time > ago(10m) | summarize arg_max(event_time, order_status) by order_id | where order_status !in ("completed","cancelled") | summarize active_orders = count() by station_id`.
+- Queue drain time formula: `(active_orders - max_capacity) * avg_prep_minutes / max_capacity`, where `active_orders` comes from `order_events`.
+- `kitchen_events` only records station activity signals (event log); it does not carry `queue_size` or `station_status`. Load and status are always derived from `order_events`.
+- Join pattern for capacity lookup: `order_events | ... | join kind=leftouter stations on station_id`.
 - Station IDs are: `grill`, `fryer`, `sauces`, `assembly`.
 
 ## Event ingestion pattern

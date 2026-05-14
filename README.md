@@ -50,6 +50,7 @@ fabric-iq-restaurant/
 │   ├── configure_eventstream.py       # Configure Eventstream topology
 │   ├── configure_fabric_artifacts.py  # Create RTI dashboard, Activator, and Operations Agent items
 │   ├── configure_user_data_function.py # Create User Data Function for custom actions
+│   ├── clear_tables.py                # Clear all operational KQL tables (keep stations reference)
 │   ├── send_eventstream_events.py     # Send demo events to Event Hub
 │   └── simulate_agent_trigger_events.py # Generate events for Operations Agent testing
 ├── user_data_functions/
@@ -295,6 +296,15 @@ Sets up Eventstream topology:
 - **Destination**: KQL table `raw_restaurant_events`
 - **Format**: JSON with automatic schema detection
 
+### `clear_tables.py`
+
+Clears all 7 operational KQL tables (excludes `stations` reference table) before a simulator restart or demo reset:
+
+```bash
+py scripts/clear_tables.py          # clear all tables
+py scripts/clear_tables.py --dry-run  # preview commands without executing
+```
+
 ### `send_eventstream_events.py`
 
 Event generator using Azure Event Hub SDK:
@@ -323,8 +333,7 @@ Creates the `RestaurantOperationsActions` Fabric User Data Function item and sto
   "ingredient_id": "",
   "severity": "warning",
   "payload": {
-    "delay_minutes": 8.0,
-    "queue_size": 9
+    "delay_minutes": 8.0
   }
 }
 ```

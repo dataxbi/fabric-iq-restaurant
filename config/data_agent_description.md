@@ -6,7 +6,7 @@ Este agente proporciona inteligencia operacional en tiempo real sobre el restaur
 
 - **Estado de pedidos activos**: identifica qué pedidos están en curso, cuáles superan umbrales de demora y cuáles presentan riesgo de incumplir su SLA, filtrado por canal, estación o severidad.
 
-- **Presión de estaciones de cocina**: reporta el estado actual de cada estación (grill, fryer, sauces, assembly), incluyendo tamaño de cola, capacidad, porcentaje de carga y tiempo estimado de drenaje.
+- **Presión de estaciones de cocina**: reporta el estado actual de cada estación (grill, fryer, sauces, assembly), incluyendo número de pedidos activos, capacidad máxima, porcentaje de carga y tiempo estimado de drenaje. La carga se calcula a partir de los pedidos activos en `order_events`, no de campos del simulador.
 
 - **Inventario crítico**: detecta ingredientes por debajo de su umbral de stock definido.
 
@@ -23,7 +23,7 @@ Base de datos KQL `restaurant_rti` en el Eventhouse de Microsoft Fabric. Tablas 
 | Tabla | Contenido |
 |---|---|
 | `order_events` | Eventos de pedido: creación, retraso, finalización de pago |
-| `kitchen_events` | Estado de estaciones de cocina: cola, capacidad, saturación |
+| `kitchen_events` | Señales de actividad de estaciones de cocina (eventos `kitchen.station.updated`); la carga real y el estado se calculan a partir de `order_events` |
 | `inventory_events` | Niveles de stock de ingredientes |
 | `agent_events` | Recomendaciones emitidas por el agente de operaciones |
 | `approval_events` | Aprobaciones o rechazos de recomendaciones |
