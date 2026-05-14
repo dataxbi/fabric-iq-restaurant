@@ -180,42 +180,43 @@
       letter-spacing: .18em;
       text-transform: uppercase;
       color: var(--fabric);
-      margin-bottom: 2rem;
+      margin-bottom: 1.6rem;
       text-align: center;
     }
     .speakers-grid {
       display: flex;
-      gap: 3rem;
+      gap: 2.5rem;
       justify-content: center;
       flex-wrap: wrap;
       width: 100%;
-      max-width: 860px;
     }
     .speaker-card {
-      display: flex;
-      align-items: center;
-      gap: 1.1rem;
-      background: var(--white);
+      position: relative;
+      width: 210px;
       border-radius: 1rem;
-      padding: 1.2rem 1.6rem;
-      box-shadow: 0 4px 20px rgba(0,0,0,.08);
-      min-width: 260px;
-    }
-    .speaker-avatar {
-      width: 64px; height: 64px;
-      border-radius: 50%;
-      background: linear-gradient(135deg, var(--fabric), var(--fabric2));
-      display: flex; align-items: center; justify-content: center;
-      font-size: 1.6rem;
+      overflow: hidden;
+      box-shadow: 0 8px 32px rgba(0,0,0,.18);
       flex-shrink: 0;
-      color: white;
-      font-weight: 700;
     }
-    .speaker-info h3 {
-      font-size: 1rem;
+    .speaker-card img {
+      width: 100%;
+      height: 270px;
+      object-fit: cover;
+      display: block;
+    }
+    .speaker-overlay {
+      position: absolute;
+      bottom: 0; left: 0; right: 0;
+      padding: 1.4rem .75rem .7rem;
+      background: linear-gradient(transparent, rgba(0,0,0,.85));
+      text-align: right;
+    }
+    .speaker-overlay h3 {
+      font-size: .88rem;
       font-weight: 700;
-      color: var(--dark);
-      line-height: 1.2;
+      color: var(--white);
+      line-height: 1.25;
+      margin-bottom: .3rem;
     }
     .mvp-badge {
       display: inline-flex;
@@ -223,11 +224,10 @@
       gap: .3rem;
       background: #003a70;
       color: var(--white);
-      font-size: .65rem;
+      font-size: .6rem;
       font-weight: 700;
-      padding: .2rem .55rem;
+      padding: .18rem .5rem;
       border-radius: .3rem;
-      margin-top: .35rem;
       letter-spacing: .04em;
     }
     .mvp-badge .diamond { color: var(--fabric2); }
@@ -235,45 +235,38 @@
     .orgs-row {
       display: flex;
       align-items: center;
-      gap: 2.5rem;
-      margin-top: 2.2rem;
+      gap: 2rem;
+      margin-top: 1.8rem;
       flex-wrap: wrap;
       justify-content: center;
     }
-    .org-chip {
+    .org-logo-link {
       display: flex;
       align-items: center;
-      gap: .5rem;
-      font-size: .95rem;
-      font-weight: 700;
-      color: var(--dark);
-      border: 2px solid #e0e8f5;
-      border-radius: .75rem;
-      padding: .5rem 1.1rem;
+      justify-content: center;
+      text-decoration: none;
+      transition: opacity .2s, transform .2s;
     }
-    .org-chip .ico { font-size: 1.2rem; }
-    .book-chip {
+    .org-logo-link:hover { opacity: .8; transform: translateY(-2px); }
+    .org-logo-link img {
+      height: 44px;
+      width: auto;
+      object-fit: contain;
+      display: block;
+    }
+    .book-link {
       display: flex;
       align-items: center;
-      gap: .6rem;
-      font-size: .85rem;
-      font-weight: 600;
-      color: var(--muted);
-      font-style: italic;
+      text-decoration: none;
+      transition: opacity .2s, transform .2s;
     }
-    .book-cover {
-      width: 38px;
-      background: linear-gradient(135deg, #f5b800, #e08000);
-      border-radius: .25rem;
-      aspect-ratio: .7;
-      display: flex; align-items: center; justify-content: center;
-      font-size: .6rem;
-      font-style: normal;
-      font-weight: 800;
-      color: white;
-      text-align: center;
-      line-height: 1.2;
-      padding: .2rem;
+    .book-link:hover { opacity: .85; transform: translateY(-2px); }
+    .book-link img {
+      height: 72px;
+      width: auto;
+      object-fit: contain;
+      border-radius: .3rem;
+      box-shadow: 0 4px 14px rgba(0,0,0,.2);
     }
 
     /* ══ SLIDES 4-7 · Imágenes ═══════════════════════════════ */
@@ -364,7 +357,8 @@
     /* ── responsive tweaks ───────────────────────────────────── */
     @media (max-width: 600px) {
       .speakers-grid { gap: 1.2rem; }
-      .speaker-card  { min-width: unset; width: 100%; }
+      .speaker-card  { width: 140px; }
+      .speaker-card img { height: 180px; }
       #s2 h1         { font-size: 2rem; }
     }
   </style>
@@ -411,27 +405,32 @@
   <div class="section-label">Ponentes</div>
   <div class="speakers-grid">
     <div class="speaker-card">
-      <div class="speaker-avatar">DA</div>
-      <div class="speaker-info">
+      <img src="img/diana_aguilera_reyna.png" alt="Diana Aguilera Reyna" />
+      <div class="speaker-overlay">
         <h3>Diana Aguilera Reyna</h3>
         <span class="mvp-badge"><span class="diamond">◆</span> Microsoft MVP</span>
       </div>
     </div>
     <div class="speaker-card">
-      <div class="speaker-avatar">NL</div>
-      <div class="speaker-info">
+      <img src="img/nelson_lopez_centeno.png" alt="Nelson López Centeno" />
+      <div class="speaker-overlay">
         <h3>Nelson López Centeno</h3>
         <span class="mvp-badge"><span class="diamond">◆</span> Microsoft MVP</span>
       </div>
     </div>
   </div>
   <div class="orgs-row">
-    <div class="org-chip"><span class="ico">🔷</span> dataXbi · <small>www.dataXbi.com</small></div>
-    <div class="org-chip"><span class="ico">⚡</span> ADN Fabric</div>
-    <div class="book-chip">
-      <div class="book-cover">Intro MS Fabric</div>
-      <span>Introducción a<br/>Microsoft Fabric · Anaya</span>
-    </div>
+    <a class="org-logo-link" href="https://www.dataxbi.com" target="_blank" rel="noopener" title="dataXbi">
+      <img src="img/dataxbi-logo.png" alt="dataXbi" />
+    </a>
+    <a class="org-logo-link" href="https://www.adnfabric.com" target="_blank" rel="noopener" title="ADN Fabric">
+      <img src="img/ADN Fabric icon v2 youtube.png" alt="ADN Fabric" />
+    </a>
+    <a class="book-link"
+       href="https://www.amazon.es/Introducci%C3%B3n-Microsoft-Fabric-plataforma-IMPRESCINDIBLES/dp/8441552754"
+       target="_blank" rel="noopener" title="Introducción a Microsoft Fabric – Anaya">
+      <img src="img/portada_libro_fabric.jpeg" alt="Libro: Introducción a Microsoft Fabric" />
+    </a>
   </div>
   <a class="arrow" href="#s4" style="color:var(--fabric);" aria-label="Siguiente">↓</a>
 </section>
