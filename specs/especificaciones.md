@@ -31,7 +31,7 @@ Diseñar y ejecutar una demo sencilla en **Microsoft Fabric** que simule un rest
 ## 3. Operación funcional (visión general)
 
 1. Llega pedido (`order.created`).
-2. Cocina actualiza estado de estaciones y cola (`kitchen.station.updated`).
+2. La cocina emite señales de actividad de estaciones (`kitchen.station.updated`).
 3. Inventario refleja consumo (`inventory.level.changed`).
 4. Si ETA se degrada, se marca retraso (`order.prep.delayed`).
 5. El motor de reglas decide y ejecuta acciones automáticas.
@@ -89,8 +89,8 @@ La cocina del restaurante tiene **4 estaciones**:
 
 **Relación con los pedidos:**
 - Un pedido (`order_events`) se asigna a una estación mediante `station_id`.
-- La estación procesa el pedido dentro de su `max_capacity`. Si la cola (`queue_size` en `kitchen_events`) supera la capacidad, los pedidos se acumulan y el tiempo de espera aumenta.
-- El tiempo estimado de desatasco se calcula como: `(queue_size - max_capacity) × avg_prep_minutes / max_capacity`.
+- La estación procesa el pedido dentro de su `max_capacity`. La carga activa se calcula contando los pedidos en curso en `order_events` (`order_status = "in_prep"` en los últimos 10 minutos). Si esa cuenta supera la capacidad, los pedidos se acumulan y el tiempo de espera aumenta.
+- El tiempo estimado de desatasco se calcula como: `(active_orders - max_capacity) × avg_prep_minutes / max_capacity`, donde `active_orders` es el conteo real desde `order_events`.
 - El retraso acumulado en una estación (`delay_minutes` en `order_events`) se usa para detectar riesgo de SLA y desencadenar recomendaciones del Operations Agent.
 
 **Relación con el inventario:**
@@ -115,7 +115,7 @@ La demo usa tablas KQL operacionales, no un modelo semántico analítico:
 
 1. `raw_restaurant_events`: landing/staging de eventos crudos recibidos desde Eventstream.
 2. `order_events`: ciclo de vida de pedidos.
-3. `kitchen_events`: estado de estaciones, colas y saturación.
+3. `kitchen_events`: señales de actividad de estaciones (eventos `kitchen.station.updated`). La carga y el estado se derivan de `order_events`.
 4. `inventory_events`: consumo, reposición y stock crítico.
 5. `agent_events`: recomendaciones del Operations Agent.
 6. `approval_events`: aprobaciones/rechazos humanos.
@@ -139,7 +139,7 @@ Consultas KQL principales:
 | Evento | Cuándo se emite | Campos clave |
 |---|---|---|
 | `order.created` | Al entrar un pedido | `order_id`, `channel`, `items`, `created_at` |
-| `kitchen.station.updated` | Cambio de carga en estación | `station_id`, `queue_size`, `active_orders`, `timestamp` |
+| `kitchen.station.updated` | Señal de actividad en estación | `station_id`, `capacity`, `severity`, `timestamp` |
 | `inventory.level.changed` | Consumo/reposición de ingrediente | `ingredient_id`, `stock_pct`, `delta`, `timestamp` |
 | `order.prep.delayed` | ETA supera umbral | `order_id`, `delay_minutes`, `station_id`, `timestamp` |
 | `customer.sentiment.signal` | Señal simplificada de experiencia | `order_id`, `sentiment`, `reason`, `timestamp` |
@@ -150,7 +150,7 @@ Consultas KQL principales:
 ## 5. Reglas y acciones automáticas
 
 ### Regla principal (cocina)
-Si `order.prep.delayed` > umbral y `queue_size` de estación crítica es alta, entonces:
+Si `order.prep.delayed` > umbral y la carga activa de la estación (desde `order_events`) supera su capacidad, entonces:
 1. **Fabric Activator** detecta la condición.
 2. Fabric Activator dispara la repriorización del pedido.
 3. Se ejecuta la repriorización y, si aplica, asignación de estación de apoyo.
