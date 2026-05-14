@@ -72,10 +72,25 @@ The scripts should prepare:
 - Always include a blank line before the `Co-authored-by:` trailer so Git recognizes it as a proper trailer.
 - Keep spec changes in a separate commit from code/config changes.
 
+## Simulator
+
+- The unified simulator is `scripts/simulate_restaurant.py`.
+- **Batch mode**: `python simulate_restaurant.py --orders 12 --scenario peak` — one-shot pass, all orders closed before exit.
+- **Continuous mode**: `python simulate_restaurant.py --continuous` — loops forever emitting trigger scenarios; Ctrl+C drains pending orders before exit.
+- **Close-pending mode**: `python simulate_restaurant.py --close-pending` — emits `payment.completed` for all orders left open from a previous run, then exits.
+- Do not reference `send_eventstream_events.py` or `simulate_agent_trigger_events.py` — they were removed.
+
+## Presentation website
+
+- `web/index.html` is a single-file, scroll-snap presentation website for live demo events.
+- `web/img/` holds speaker photos, company logos, book cover, and concept images.
+- The site links to `https://www.powerus.club/amigos#empresas` (event sponsors) on the first slide.
+- Do not modify the website unless the user explicitly requests it.
+
 ## Suggested execution order
 1. Bootstrap Fabric resources by name.
 2. Create the Eventhouse schema, KQL functions, update policies, and seed the `stations` reference table.
 3. Configure Eventstream routing into `raw_restaurant_events`.
 4. Configure Activator rules for simple conditions such as stock-critical, high queue, and delayed orders.
 5. Configure Operations Agent with Eventhouse as knowledge source for complex recommendations.
-6. Run the restaurant event simulator and verify the event -> condition -> recommendation/approval -> action trace.
+6. Run `scripts/simulate_restaurant.py` (batch or continuous) and verify the event -> condition -> recommendation/approval -> action trace.
