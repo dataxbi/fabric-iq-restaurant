@@ -13,4 +13,4 @@ semantic_model_payload.json
 *.log
 dist/
 build/
-
+scripts/.sim_state.json

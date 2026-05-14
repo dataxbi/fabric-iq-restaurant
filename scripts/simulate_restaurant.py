@@ -64,8 +64,45 @@ _order_state: dict[str, str] = {}
 _pending: list[dict] = []
 _MAX_PENDING = 500
 
-# Counter for sequential batch order IDs (ORD-1001, ORD-1002, …)
-_batch_counter = 1000
+# ─── persistent daily order counter ───────────────────────────────────────────
+# State file: scripts/.sim_state.json  (excluded from git)
+# Format:     {"date": "YYYYMMDD", "counter": N}
+# Order IDs:  ORD-YYYYMMDD-NNNN  (e.g. ORD-20260514-0023)
+#             Trigger-script IDs: ORD-PREM-YYYYMMDD-NNNN, ORD-Q0-…, etc.
+_STATE_FILE = Path(__file__).parent / ".sim_state.json"
+
+
+def _load_counter() -> tuple[str, int]:
+    """Return (today_str, next_counter). Resets to 1 on a new day."""
+    today = datetime.now().strftime("%Y%m%d")
+    if _STATE_FILE.exists():
+        try:
+            data = json.loads(_STATE_FILE.read_text(encoding="utf-8"))
+            if data.get("date") == today:
+                return today, int(data.get("counter", 0)) + 1
+        except (json.JSONDecodeError, KeyError, ValueError):
+            pass
+    return today, 1
+
+
+def _save_counter(today: str, counter: int) -> None:
+    """Persist the current counter to the state file."""
+    _STATE_FILE.write_text(
+        json.dumps({"date": today, "counter": counter}, indent=2),
+        encoding="utf-8",
+    )
+
+
+def next_order_id(prefix: str = "") -> str:
+    """Return the next unique order ID and persist the counter.
+
+    Batch orders:   ORD-20260514-0001, ORD-20260514-0002, …
+    Trigger orders: ORD-PREM-20260514-0003, ORD-Q0-20260514-0004, …
+    """
+    today, counter = _load_counter()
+    _save_counter(today, counter)
+    tag = f"-{prefix}" if prefix else ""
+    return f"ORD{tag}-{today}-{counter:04d}"
 
 
 # ─── helpers ──────────────────────────────────────────────────────────────────
@@ -281,7 +318,7 @@ def run_batch(producer, args: argparse.Namespace) -> None:
     counts: dict[str, int] = {}
 
     for n in range(1, args.orders + 1):
-        order_id = f"ORD-{_batch_counter + n}"
+        order_id = next_order_id()
         channel = CHANNELS[n % len(CHANNELS)]
         station = STATIONS[n % len(STATIONS)]
         ingredient = INGREDIENTS[n % len(INGREDIENTS)]
@@ -337,7 +374,6 @@ def run_batch(producer, args: argparse.Namespace) -> None:
         if n < args.orders:
             time.sleep(args.interval_seconds)
 
-    _batch_counter += args.orders
     print(f"\n✅ Batch complete: {sum(counts.values())} events — {counts}")
 
 
@@ -345,14 +381,10 @@ def run_batch(producer, args: argparse.Namespace) -> None:
 #  CONTINUOUS MODE SCENARIOS
 # ─────────────────────────────────────────────────────────────────────────────
 
-def _trigger_id(prefix: str) -> str:
-    return f"ORD-{prefix}-{int(time.time())}-{random.randint(100, 999)}"
-
-
 def _scenario_premium_near_sla(producer) -> None:
     """Premium order with SLA < 10 min — always delayed (order.created included)."""
     print("\n  [Scenario] PremiumNearSLA")
-    order_id = _trigger_id("PREM")
+    order_id = next_order_id("PREM")
     station = random.choice(STATIONS)
     channel = random.choice(CHANNELS)
     sla = random.randint(3, 8)
@@ -388,7 +420,7 @@ def _scenario_anomalous_queue(producer) -> None:
         stock_pct=stock_pct, threshold_pct=20.0, delta=random.randint(-10, -2),
     ))
     for i in range(queue_depth):
-        order_id = _trigger_id(f"Q{i}")
+        order_id = next_order_id(f"Q{i}")
         channel = random.choice(CHANNELS)
         is_premium = random.random() < 0.20
         _emit_order_lifecycle(
@@ -411,7 +443,7 @@ def _scenario_multi_channel(producer) -> None:
     print("\n  [Scenario] MultiChannelPressure")
     for channel in CHANNELS:
         for i in range(2):
-            order_id = _trigger_id(f"MC{channel[:2].upper()}{i}")
+            order_id = next_order_id(f"MC{channel[:2].upper()}{i}")
             is_premium = (channel == "delivery" and random.random() < 0.7) or random.random() < 0.1
             station = random.choice(STATIONS)
             _emit_order_lifecycle(
