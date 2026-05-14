@@ -53,8 +53,8 @@ def enqueue_order(order_id: str, station_id: str, channel: str, prep_seconds: in
     Defaults to a random value based on the station's avg_prep_minutes.
     """
     if prep_seconds is None:
-        # Simulate realistic prep times: 20s–60s for demo speed
-        prep_seconds = random.randint(20, 60)
+        # Simulate realistic prep times: 45s–90s so orders drain before next batch
+        prep_seconds = random.randint(45, 90)
     _pending_orders.append({
         "order_id": order_id,
         "station_id": station_id,
@@ -202,7 +202,7 @@ def scenario_anomalous_station_queue():
     producer = EventHubProducerClient.from_connection_string(EVENT_HUB_CONN_STR)
     try:
         station = random.choice(STATIONS)
-        queue_depth = random.randint(2, 4)
+        queue_depth = random.randint(1, 2)
         ingredient = random.choice(INGREDIENTS)
         stock_pct = random.randint(5, 15)  # Critical stock levels
         
