@@ -152,8 +152,10 @@ let station_load =
     | project station_id, last_seen=event_time, station_status, queue_size, severity;
 let active_orders =
     order_events
-    | where event_time >= ago(30m)
-    | summarize ActiveOrders=dcount(order_id) by station_id;
+    | where event_time >= ago(5m)
+    | summarize arg_max(event_time, order_status) by order_id, station_id
+    | where order_status in ("created", "in_prep")
+    | summarize ActiveOrders=count() by station_id;
 stations
 | join kind=leftouter station_load on station_id
 | join kind=leftouter active_orders on station_id
