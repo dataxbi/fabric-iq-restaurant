@@ -159,7 +159,9 @@ datatable(
 
 def deploy_schema(query_service_uri: str, database_name: str) -> None:
     for table_name, columns in TABLES:
+        # Create if not exists, then enforce exact schema (removes stale columns)
         run_kusto_management(query_service_uri, database_name, f".create-merge table {table_name} ({columns})")
+        run_kusto_management(query_service_uri, database_name, f".alter table {table_name} ({columns})")
         run_kusto_management(query_service_uri, database_name, f".alter table {table_name} policy streamingingestion enable")
         run_kusto_management(
             query_service_uri,
@@ -214,6 +216,7 @@ def main() -> None:
     if args.skip_policies or not read_bool_env("FABRIC_APPLY_EVENTHOUSE_SCHEMA", True):
         for table_name, columns in TABLES:
             run_kusto_management(query_service_uri, database_name, f".create-merge table {table_name} ({columns})")
+            run_kusto_management(query_service_uri, database_name, f".alter table {table_name} ({columns})")
         run_kusto_management(query_service_uri, database_name, STATIONS_DATA)
         print("Table creation completed.")
         return
