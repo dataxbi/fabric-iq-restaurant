@@ -59,11 +59,19 @@
       border-radius: 50%;
       background: rgba(255,255,255,.35);
       border: 2px solid rgba(255,255,255,.6);
-      transition: background .25s, transform .25s;
+      transition: background .25s, transform .25s, border-color .25s;
       display: block;
     }
     #nav a.active,
-    #nav a:hover { background: var(--fabric2); transform: scale(1.4); }
+    #nav a:hover { background: var(--fabric2); transform: scale(1.4); border-color: var(--fabric2); }
+
+    /* dots on light-background slides */
+    #nav.on-light a {
+      background: rgba(0,0,0,.18);
+      border-color: rgba(0,0,0,.35);
+    }
+    #nav.on-light a.active,
+    #nav.on-light a:hover { background: var(--fabric); border-color: var(--fabric); }
 
     /* ── arrow ───────────────────────────────────────────────── */
     .arrow {
@@ -372,7 +380,7 @@
 </nav>
 
 <!-- ══ SLIDE 1 · Patrocinadores ══════════════════════════════ -->
-<section id="s1">
+<section id="s1" data-navtheme="light">
   <div class="eyebrow">PowerUS · Evento</div>
   <h2>Con el apoyo de nuestra comunidad</h2>
   <p>Esta charla es posible gracias al respaldo de los patrocinadores y amigos de PowerUS.</p>
@@ -395,7 +403,7 @@
 </section>
 
 <!-- ══ SLIDE 3 · Ponentes ════════════════════════════════════ -->
-<section id="s3">
+<section id="s3" data-navtheme="light">
   <div class="section-label">Ponentes</div>
   <div class="speakers-grid">
     <div class="speaker-col">
@@ -485,6 +493,8 @@
         dots.forEach(d => d.classList.remove('active'));
         const dot = document.querySelector(`#nav a[href="#${e.target.id}"]`);
         if (dot) dot.classList.add('active');
+        const nav = document.getElementById('nav');
+        nav.classList.toggle('on-light', e.target.dataset.navtheme === 'light');
       }
     });
   }, { threshold: 0.55 });
