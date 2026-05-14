@@ -280,12 +280,14 @@ def _flush_state() -> None:
 
 def _enqueue(order_id: str, station_id: str, channel: str,
              prep_seconds: int | None = None) -> None:
-    """Register order as pending (idempotent — ignores if already tracked)."""
-    if order_id in _order_state:
+    """Add order to pending-completion queue (idempotent — skips if already queued or completed)."""
+    # Skip if already in the pending queue or already completed
+    if _order_state.get(order_id) == "completed":
+        return
+    if any(o["order_id"] == order_id for o in _pending):
         return
     if prep_seconds is None:
         prep_seconds = random.randint(45, 90)
-    _order_state[order_id] = "created"
     _pending.append({
         "order_id": order_id,
         "station_id": station_id,
