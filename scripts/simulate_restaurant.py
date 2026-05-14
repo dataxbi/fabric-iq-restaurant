@@ -181,6 +181,9 @@ Examples
 
   # Continuous without agent traceability events
   python simulate_restaurant.py --continuous --no-agent-loop
+
+  # Close all pending orders from a previous run and exit
+  python simulate_restaurant.py --close-pending
         """,
     )
     parser.add_argument("--connection-string", default=None,
@@ -203,6 +206,9 @@ Examples
                         help="Skip agent recommendation/approval/action events in continuous mode")
     parser.add_argument("--cycle-seconds", type=float, default=15.0,
                         help="Pause between iterations in continuous mode (default: 15s)")
+    # Close-pending mode
+    parser.add_argument("--close-pending", action="store_true", default=False,
+                        help="Emit payment.completed for all pending orders from the state file, then exit")
     return parser
 
 
@@ -631,6 +637,31 @@ def _scenario_complete_pending(producer) -> None:
     _flush_state()
 
 
+def run_close_pending(producer) -> None:
+    """Emit payment.completed for every pending order in the state file, then exit."""
+    _restore_pending()
+    if not _pending:
+        print("ℹ  No pending orders found in state file — nothing to close.")
+        return
+
+    total = len(_pending)
+    print(f"\n🔒 Closing {total} pending order(s)…\n")
+
+    # Mark all as immediately ready
+    now = time.time()
+    for order in _pending:
+        order["ready_at"] = now
+
+    # Drain in batches of 20 (same as _scenario_complete_pending)
+    while _pending:
+        _scenario_complete_pending(producer)
+        now = time.time()
+        for order in _pending:
+            order["ready_at"] = now
+
+    print(f"\n✅ All {total} pending order(s) closed.")
+
+
 def run_continuous(producer, args: argparse.Namespace) -> None:
     """Loop forever running all trigger scenarios until Ctrl+C."""
     _restore_pending()
@@ -671,6 +702,18 @@ def run_continuous(producer, args: argparse.Namespace) -> None:
             counts[state] = counts.get(state, 0) + 1
         print(f"   State summary  : {counts}")
 
+        if _pending:
+            print(f"\n🔒 Closing {len(_pending)} pending order(s) before exit…")
+            now = time.time()
+            for order in _pending:
+                order["ready_at"] = now
+            while _pending:
+                _scenario_complete_pending(producer)
+                now = time.time()
+                for order in _pending:
+                    order["ready_at"] = now
+            print("✅ All pending orders closed.")
+
 
 # ─── entry point ──────────────────────────────────────────────────────────────
 
@@ -693,7 +736,9 @@ def main() -> None:
     )
 
     try:
-        if args.continuous:
+        if args.close_pending:
+            run_close_pending(producer)
+        elif args.continuous:
             run_continuous(producer, args)
         else:
             run_batch(producer, args)
