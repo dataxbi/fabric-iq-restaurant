@@ -148,19 +148,22 @@ order_events
 let station_load =
     kitchen_events
     | where event_time >= ago(30m)
-    | summarize arg_max(event_time, *) by station_id;
+    | summarize arg_max(event_time, *) by station_id
+    | project station_id, last_seen=event_time, station_status, queue_size, severity;
 let active_orders =
     order_events
     | where event_time >= ago(30m)
     | summarize ActiveOrders=dcount(order_id) by station_id;
-station_load
-| join kind=leftouter stations on station_id
+stations
+| join kind=leftouter station_load on station_id
 | join kind=leftouter active_orders on station_id
-| extend effective_capacity = iif(isnotnull(max_capacity), max_capacity, capacity)
-| extend load_pct = iif(effective_capacity > 0, round(100.0 * todouble(queue_size) / todouble(effective_capacity), 1), real(0))
-| extend drain_minutes = iif(queue_size > effective_capacity and avg_prep_minutes > 0, round(todouble(queue_size - effective_capacity) * avg_prep_minutes / todouble(effective_capacity), 1), real(0))
+| extend queue_size = coalesce(queue_size, long(0))
+| extend station_status = coalesce(station_status, "idle")
+| extend severity = coalesce(severity, "info")
 | extend ActiveOrders = coalesce(ActiveOrders, 0)
-| project station_id, display_name, specialization, station_status, ActiveOrders, queue_size, effective_capacity, load_pct, drain_minutes, severity
+| extend load_pct = iif(max_capacity > 0, round(100.0 * todouble(queue_size) / todouble(max_capacity), 1), real(0))
+| extend drain_minutes = iif(queue_size > max_capacity and avg_prep_minutes > 0, round(todouble(queue_size - max_capacity) * avg_prep_minutes / todouble(max_capacity), 1), real(0))
+| project station_id, display_name, specialization, station_status, ActiveOrders, queue_size, max_capacity, load_pct, drain_minutes, severity
 | order by load_pct desc
 """,
             "layout": {"x": 0, "y": 6, "width": 14, "height": 7},
