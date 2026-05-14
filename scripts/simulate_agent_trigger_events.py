@@ -38,8 +38,9 @@ CANCEL_HISTORY = ["none", "cancelado_1_vez", "cancelado_2_veces", "cancelado_3_v
 # Buffer of pending orders waiting to be completed.
 # Each entry: {"order_id": str, "station_id": str, "channel": str, "ready_at": float}
 _pending_orders: list[dict] = []
-# Max orders held in buffer before oldest are dropped (prevents unbounded growth)
-_MAX_PENDING = 30
+# Max orders held in buffer. Each iteration can enqueue ~30-50 orders across all scenarios,
+# so the buffer must be large enough to hold several iterations' worth at 30-180s prep time.
+_MAX_PENDING = 500
 
 def now_iso() -> str:
     return datetime.utcnow().isoformat() + "Z"
@@ -427,8 +428,8 @@ def scenario_complete_orders() -> None:
     if not ready:
         return
 
-    # Process at most 5 completions per cycle to smooth the flow
-    to_complete = ready[:5]
+    # Process at most 20 completions per cycle to keep up with creation rate
+    to_complete = ready[:20]
     producer = EventHubProducerClient.from_connection_string(EVENT_HUB_CONN_STR)
     try:
         for order in to_complete:
