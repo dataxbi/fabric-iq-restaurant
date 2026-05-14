@@ -139,7 +139,7 @@ def build_dashboard_parts(title: str, database_name: str, query_service_uri: str
             "query": """
 order_events
 | where event_time >= startofday(now()) and event_name == "order.created"
-| summarize Total = count()
+| summarize Total = dcount(order_id)
 """,
             "layout": {"x": 0, "y": 0, "width": 6, "height": 3},
             "visual_type": "card",
@@ -161,9 +161,13 @@ order_events
         {
             "title": "Completed Today",
             "query": """
+let orders_today = order_events
+    | where event_time >= startofday(now()) and event_name == "order.created"
+    | distinct order_id;
 order_events
 | where event_time >= startofday(now()) and event_name == "payment.completed"
-| summarize Total = count()
+| where order_id in (orders_today)
+| summarize Total = dcount(order_id)
 """,
             "layout": {"x": 12, "y": 0, "width": 6, "height": 3},
             "visual_type": "card",
@@ -172,10 +176,15 @@ order_events
         {
             "title": "Completed with Delay",
             "query": """
-let delayed_ids = order_events | where event_time >= startofday(now()) and event_name == "order.prep.delayed" | distinct order_id;
 order_events
-| where event_time >= startofday(now()) and event_name == "payment.completed"
-| where order_id in (delayed_ids)
+| where event_time >= startofday(now())
+| where event_name in ("order.created", "order.prep.delayed", "payment.completed")
+| summarize
+    was_created   = countif(event_name == "order.created"),
+    was_delayed   = countif(event_name == "order.prep.delayed"),
+    was_completed = countif(event_name == "payment.completed")
+  by order_id
+| where was_created > 0 and was_delayed > 0 and was_completed > 0
 | summarize Total = count()
 """,
             "layout": {"x": 18, "y": 0, "width": 6, "height": 3},
