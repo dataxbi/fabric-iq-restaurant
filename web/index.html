@@ -43,6 +43,25 @@
       position: relative;
     }
 
+    /* ── fullscreen button ───────────────────────────────────── */
+    #btn-fs {
+      position: fixed;
+      top: 1.2rem;
+      right: 1.2rem;
+      z-index: 100;
+      width: 38px; height: 38px;
+      border-radius: 50%;
+      border: none;
+      background: rgba(0,0,0,.28);
+      color: white;
+      font-size: 1rem;
+      cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      backdrop-filter: blur(6px);
+      transition: background .2s, transform .15s;
+    }
+    #btn-fs:hover { background: var(--fabric); transform: scale(1.1); }
+
     /* ── nav dots ────────────────────────────────────────────── */
     #nav {
       position: fixed;
@@ -367,6 +386,9 @@
 </head>
 <body>
 
+<!-- ── Fullscreen button ─────────────────────────────────────── -->
+<button id="btn-fs" title="Pantalla completa (F)">⛶</button>
+
 <!-- ── Nav dots ─────────────────────────────────────────────── -->
 <nav id="nav" aria-label="Navegación por secciones">
   <a href="#s1" title="Patrocinadores"></a>
@@ -484,6 +506,22 @@
 </section>
 
 <script>
+  // ── Fullscreen ────────────────────────────────────────────
+  const btnFs = document.getElementById('btn-fs');
+  function toggleFs() {
+    if (!document.fullscreenElement) {
+      document.documentElement.requestFullscreen();
+    } else {
+      document.exitFullscreen();
+    }
+  }
+  btnFs.addEventListener('click', toggleFs);
+  document.addEventListener('keydown', e => { if (e.key === 'f' || e.key === 'F') toggleFs(); });
+  document.addEventListener('fullscreenchange', () => {
+    btnFs.textContent = document.fullscreenElement ? '✕' : '⛶';
+    btnFs.title = document.fullscreenElement ? 'Salir de pantalla completa (F)' : 'Pantalla completa (F)';
+  });
+
   // ── Active nav dot ────────────────────────────────────────
   const sections = document.querySelectorAll('section[id]');
   const dots     = document.querySelectorAll('#nav a');
