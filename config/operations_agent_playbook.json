@@ -16,8 +16,11 @@
     "Reducir cuellos de botella en cocina antes de que afecten múltiples pedidos."
   ],
   "instructions": [
-    "Usa Eventhouse como fuente única de verdad: order_events, kitchen_events, inventory_events.",
-    "Usa solo columnas del esquema actual: order_id, station_id, channel, delay_minutes, queue_size, stock_pct, threshold_pct y payload.* para cancellation_history, feedback, sla_remaining e is_premium.",
+    "Usa Eventhouse como fuente única de verdad con las siguientes tablas: order_events (pedidos y ciclo de vida), kitchen_events (estaciones de cocina), inventory_events (inventario de ingredientes), agent_events (recomendaciones), approval_events (decisiones de aprobación), action_events (acciones ejecutadas).",
+    "Columnas directas por tabla: order_events → event_time, order_id, station_id, channel, event_name, order_status, delay_minutes, severity; kitchen_events → event_time, station_id, capacity, severity; inventory_events → event_time, ingredient_id, stock_pct, threshold_pct, severity; agent_events → event_time, recommendation_id, order_id, priority (int 1-5), confidence (real 0-1), severity; approval_events → event_time, recommendation_id, approver, approval_status, severity; action_events → event_time, action_id, action_type, action_status, severity.",
+    "Usa payload.* para acceder a campos adicionales: payload.queue_size (int) en order_events y kitchen_events, payload.station_status en kitchen_events, payload.cancellation_history, payload.feedback, payload.sla_remaining y payload.is_premium en order_events.",
+    "El campo priority de agent_events es un entero (1=bajo … 5=crítico). El parámetro priority de ReprioritizeOrder es un string enum (normal, urgent, critical); son conceptos distintos.",
+    "inventory_events.severity puede ser 'critical' (stock_pct ≤ threshold_pct/2), 'warning' (stock_pct ≤ threshold_pct) o 'info' (por encima del umbral).",
     "Cuando detectes riesgo de incumplimiento de SLA, prioriza la acción ReprioritizeOrder.",
     "Las recomendaciones deben ser breves, justificadas y requieren aprobación humana en Teams.",
     "Siempre responde en español."
@@ -90,30 +93,88 @@
     },
     {
       "name": "TriggerRestock",
-      "description": "Desencadena reabastecimiento de un ingrediente crítico.",
+      "description": "Desencadena reabastecimiento de un ingrediente crítico. Emite evento action.restock.triggered para trazabilidad.",
       "parameters": [
-        "ingredient_id",
-        "stock_pct",
-        "reason"
-      ]
+        {
+          "name": "ingredientId",
+          "description": "Identificador del ingrediente: beef, chicken, fries, sauce_bbq, sauce_mayo",
+          "type": "string",
+          "required": true,
+          "enum": ["beef", "chicken", "fries", "sauce_bbq", "sauce_mayo"]
+        },
+        {
+          "name": "stockPct",
+          "description": "Porcentaje de stock actual (valor real 0-100)",
+          "type": "number",
+          "required": true
+        },
+        {
+          "name": "reason",
+          "description": "Motivo del reabastecimiento",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "severity",
+          "description": "Severidad del nivel de inventario: warning o critical",
+          "type": "string",
+          "required": true,
+          "enum": ["warning", "critical"]
+        }
+      ],
+      "expectedOutcome": "Reabastecimiento iniciado; evento registrado en action_events para auditoría y dashboard."
     },
     {
       "name": "ThrottleChannel",
-      "description": "Reduce temporalmente la entrada de pedidos en un canal específico.",
+      "description": "Reduce temporalmente la entrada de pedidos en un canal específico. Emite evento action.channel.throttled para trazabilidad.",
       "parameters": [
-        "channel",
-        "duration_minutes",
-        "reason"
-      ]
+        {
+          "name": "channel",
+          "description": "Canal a throttlear: delivery, dine-in, takeout",
+          "type": "string",
+          "required": true,
+          "enum": ["delivery", "dine-in", "takeout"]
+        },
+        {
+          "name": "durationMinutes",
+          "description": "Duración del throttle en minutos (1-60)",
+          "type": "integer",
+          "required": true
+        },
+        {
+          "name": "reason",
+          "description": "Motivo del throttle (ej: cola de cocina saturada)",
+          "type": "string",
+          "required": true
+        }
+      ],
+      "expectedOutcome": "Canal throttleado temporalmente; evento registrado en action_events para auditoría y dashboard."
     },
     {
       "name": "IssueCompensation",
-      "description": "Emite compensación a cliente (descuento, voucher, etc.).",
+      "description": "Emite compensación a cliente afectado por retraso (descuento, voucher, etc.). Emite evento action.compensation.issued para trazabilidad.",
       "parameters": [
-        "order_id",
-        "compensation_type",
-        "reason"
-      ]
+        {
+          "name": "orderId",
+          "description": "Identificador único del pedido afectado",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "compensationType",
+          "description": "Tipo de compensación: discount, voucher, free_item",
+          "type": "string",
+          "required": true,
+          "enum": ["discount", "voucher", "free_item"]
+        },
+        {
+          "name": "reason",
+          "description": "Motivo de la compensación (ej: retraso superior a SLA)",
+          "type": "string",
+          "required": true
+        }
+      ],
+      "expectedOutcome": "Compensación emitida al cliente; evento registrado en action_events para auditoría y dashboard."
     }
   ]
 }
