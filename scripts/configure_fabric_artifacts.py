@@ -126,7 +126,7 @@ order_events
 | where event_time >= startofday(now()) and event_name == "order.created"
 | count
 """,
-            "layout": {"x": 0, "y": 0, "width": 6, "height": 5},
+            "layout": {"x": 0, "y": 0, "width": 12, "height": 7},
             "visual_type": "stat",
         },
         {
@@ -138,7 +138,7 @@ order_events
 | where order_status !in ("completed", "cancelled")
 | count
 """,
-            "layout": {"x": 6, "y": 0, "width": 6, "height": 5},
+            "layout": {"x": 12, "y": 0, "width": 12, "height": 7},
             "visual_type": "stat",
         },
         {
@@ -148,7 +148,7 @@ order_events
 | where event_time >= startofday(now()) and event_name == "payment.completed"
 | count
 """,
-            "layout": {"x": 12, "y": 0, "width": 6, "height": 5},
+            "layout": {"x": 0, "y": 7, "width": 12, "height": 7},
             "visual_type": "stat",
         },
         {
@@ -163,7 +163,7 @@ order_events
 | where order_id in (delayed_ids)
 | count
 """,
-            "layout": {"x": 18, "y": 0, "width": 6, "height": 5},
+            "layout": {"x": 12, "y": 7, "width": 12, "height": 7},
             "visual_type": "stat",
         },
         {
@@ -173,7 +173,7 @@ raw_restaurant_events
 | summarize Events=count() by bin(event_time, 1m), event_name
 | order by event_time asc
 """,
-            "layout": {"x": 0, "y": 5, "width": 12, "height": 6},
+            "layout": {"x": 0, "y": 14, "width": 12, "height": 6},
             "visual_type": "line",
         },
         {
@@ -193,7 +193,7 @@ order_events
 | order by event_time desc
 | take 50
 """,
-            "layout": {"x": 12, "y": 5, "width": 12, "height": 6},
+            "layout": {"x": 12, "y": 14, "width": 12, "height": 6},
             "visual_type": "table",
         },
         {
@@ -216,7 +216,7 @@ stations
 | project station_id, display_name, specialization, station_status, active_orders, queue_size, max_capacity, load_pct, drain_minutes, severity
 | order by load_pct desc
 """,
-            "layout": {"x": 0, "y": 11, "width": 14, "height": 7},
+            "layout": {"x": 0, "y": 20, "width": 14, "height": 7},
             "visual_type": "table",
         },
         {
@@ -231,7 +231,7 @@ order_events
     by station_id, bin(event_time, 5m)
 | order by event_time asc
 """,
-            "layout": {"x": 14, "y": 11, "width": 10, "height": 7},
+            "layout": {"x": 14, "y": 20, "width": 10, "height": 7},
             "visual_type": "line",
         },
         {
@@ -243,7 +243,7 @@ inventory_events
 | project event_time, ingredient_id, stock_pct, threshold_pct, severity
 | order by stock_pct asc
 """,
-            "layout": {"x": 0, "y": 18, "width": 8, "height": 6},
+            "layout": {"x": 0, "y": 27, "width": 8, "height": 6},
             "visual_type": "table",
         },
         {
@@ -256,7 +256,7 @@ union
 | order by event_time desc
 | take 100
 """,
-            "layout": {"x": 8, "y": 18, "width": 16, "height": 6},
+            "layout": {"x": 8, "y": 27, "width": 16, "height": 6},
             "visual_type": "table",
         },
         {
