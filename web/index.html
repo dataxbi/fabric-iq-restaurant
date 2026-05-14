@@ -1,0 +1,521 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>El restaurante autónomo · PowerUS 2025</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --fabric:  #0078d4;
+      --fabric2: #00b4d8;
+      --dark:    #0a1628;
+      --light:   #f5f8ff;
+      --text:    #1a1a2e;
+      --muted:   #555e7a;
+      --white:   #ffffff;
+    }
+
+    html {
+      scroll-behavior: smooth;
+      scroll-snap-type: y mandatory;
+      overflow-y: scroll;
+      height: 100%;
+    }
+
+    body {
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      background: var(--dark);
+      color: var(--text);
+      height: 100%;
+    }
+
+    /* ── slides ─────────────────────────────────────────────── */
+    section {
+      height: 100dvh;
+      scroll-snap-align: start;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 3rem 5vw;
+      position: relative;
+    }
+
+    /* ── nav dots ────────────────────────────────────────────── */
+    #nav {
+      position: fixed;
+      right: 1.4rem;
+      top: 50%;
+      transform: translateY(-50%);
+      display: flex;
+      flex-direction: column;
+      gap: .55rem;
+      z-index: 100;
+    }
+    #nav a {
+      width: 10px; height: 10px;
+      border-radius: 50%;
+      background: rgba(255,255,255,.35);
+      border: 2px solid rgba(255,255,255,.6);
+      transition: background .25s, transform .25s;
+      display: block;
+    }
+    #nav a.active,
+    #nav a:hover { background: var(--fabric2); transform: scale(1.4); }
+
+    /* ── arrow ───────────────────────────────────────────────── */
+    .arrow {
+      position: absolute;
+      bottom: 1.6rem;
+      left: 50%;
+      transform: translateX(-50%);
+      font-size: 1.6rem;
+      opacity: .4;
+      animation: bounce 1.8s infinite;
+      color: var(--white);
+      text-decoration: none;
+    }
+    @keyframes bounce {
+      0%,100% { transform: translateX(-50%) translateY(0); }
+      50%      { transform: translateX(-50%) translateY(8px); }
+    }
+
+    /* ══ SLIDE 1 · Patrocinadores ════════════════════════════ */
+    #s1 {
+      background: var(--white);
+      text-align: center;
+    }
+    #s1 .eyebrow {
+      font-size: .8rem;
+      font-weight: 700;
+      letter-spacing: .18em;
+      text-transform: uppercase;
+      color: var(--fabric);
+      margin-bottom: 1.2rem;
+    }
+    #s1 h2 {
+      font-size: clamp(1.6rem, 3.5vw, 2.6rem);
+      font-weight: 700;
+      color: var(--dark);
+      margin-bottom: .6rem;
+    }
+    #s1 p {
+      color: var(--muted);
+      font-size: 1rem;
+      margin-bottom: 2rem;
+    }
+    #s1 .sponsor-link {
+      display: inline-flex;
+      align-items: center;
+      gap: .6rem;
+      background: var(--dark);
+      color: var(--white);
+      font-weight: 600;
+      font-size: 1.05rem;
+      padding: .8rem 2rem;
+      border-radius: 3rem;
+      text-decoration: none;
+      transition: background .2s, transform .2s;
+    }
+    #s1 .sponsor-link:hover { background: var(--fabric); transform: translateY(-2px); }
+    #s1 .sponsor-link .icon { font-size: 1.2rem; }
+    #s1 .powerus-badge {
+      margin-top: 2.5rem;
+      font-size: .85rem;
+      color: var(--muted);
+    }
+    #s1 .powerus-badge a { color: var(--fabric); text-decoration: none; font-weight: 600; }
+
+    /* ══ SLIDE 2 · Título ════════════════════════════════════ */
+    #s2 {
+      background: linear-gradient(135deg, var(--dark) 0%, #0d2445 60%, #0a1628 100%);
+      text-align: center;
+    }
+    #s2 .tag {
+      display: inline-block;
+      background: var(--fabric2);
+      color: var(--white);
+      font-size: .72rem;
+      font-weight: 700;
+      letter-spacing: .15em;
+      text-transform: uppercase;
+      padding: .3rem 1rem;
+      border-radius: 2rem;
+      margin-bottom: 1.8rem;
+    }
+    #s2 h1 {
+      font-size: clamp(1.8rem, 4.5vw, 3.8rem);
+      font-weight: 800;
+      color: var(--white);
+      line-height: 1.18;
+      max-width: 16ch;
+      margin: 0 auto 1.6rem;
+    }
+    #s2 h1 span { color: var(--fabric2); }
+    #s2 .subtitle {
+      font-size: clamp(.95rem, 1.8vw, 1.15rem);
+      color: rgba(255,255,255,.55);
+      font-style: italic;
+      max-width: 48ch;
+    }
+    #s2 .fabric-dot {
+      width: 80px; height: 80px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, var(--fabric), var(--fabric2));
+      display: flex; align-items: center; justify-content: center;
+      font-size: 2.2rem;
+      margin: 0 auto 1.8rem;
+      box-shadow: 0 0 40px rgba(0,180,216,.35);
+    }
+
+    /* ══ SLIDE 3 · Ponentes ══════════════════════════════════ */
+    #s3 {
+      background: var(--light);
+    }
+    #s3 .section-label {
+      font-size: .75rem;
+      font-weight: 700;
+      letter-spacing: .18em;
+      text-transform: uppercase;
+      color: var(--fabric);
+      margin-bottom: 2rem;
+      text-align: center;
+    }
+    .speakers-grid {
+      display: flex;
+      gap: 3rem;
+      justify-content: center;
+      flex-wrap: wrap;
+      width: 100%;
+      max-width: 860px;
+    }
+    .speaker-card {
+      display: flex;
+      align-items: center;
+      gap: 1.1rem;
+      background: var(--white);
+      border-radius: 1rem;
+      padding: 1.2rem 1.6rem;
+      box-shadow: 0 4px 20px rgba(0,0,0,.08);
+      min-width: 260px;
+    }
+    .speaker-avatar {
+      width: 64px; height: 64px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, var(--fabric), var(--fabric2));
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.6rem;
+      flex-shrink: 0;
+      color: white;
+      font-weight: 700;
+    }
+    .speaker-info h3 {
+      font-size: 1rem;
+      font-weight: 700;
+      color: var(--dark);
+      line-height: 1.2;
+    }
+    .mvp-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: .3rem;
+      background: #003a70;
+      color: var(--white);
+      font-size: .65rem;
+      font-weight: 700;
+      padding: .2rem .55rem;
+      border-radius: .3rem;
+      margin-top: .35rem;
+      letter-spacing: .04em;
+    }
+    .mvp-badge .diamond { color: var(--fabric2); }
+
+    .orgs-row {
+      display: flex;
+      align-items: center;
+      gap: 2.5rem;
+      margin-top: 2.2rem;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+    .org-chip {
+      display: flex;
+      align-items: center;
+      gap: .5rem;
+      font-size: .95rem;
+      font-weight: 700;
+      color: var(--dark);
+      border: 2px solid #e0e8f5;
+      border-radius: .75rem;
+      padding: .5rem 1.1rem;
+    }
+    .org-chip .ico { font-size: 1.2rem; }
+    .book-chip {
+      display: flex;
+      align-items: center;
+      gap: .6rem;
+      font-size: .85rem;
+      font-weight: 600;
+      color: var(--muted);
+      font-style: italic;
+    }
+    .book-cover {
+      width: 38px;
+      background: linear-gradient(135deg, #f5b800, #e08000);
+      border-radius: .25rem;
+      aspect-ratio: .7;
+      display: flex; align-items: center; justify-content: center;
+      font-size: .6rem;
+      font-style: normal;
+      font-weight: 800;
+      color: white;
+      text-align: center;
+      line-height: 1.2;
+      padding: .2rem;
+    }
+
+    /* ══ SLIDES 4-7 · Imágenes ═══════════════════════════════ */
+    .img-slide {
+      background: var(--dark);
+      padding: 2rem;
+    }
+    .img-slide img {
+      max-width: 100%;
+      max-height: 80dvh;
+      object-fit: contain;
+      border-radius: .75rem;
+      box-shadow: 0 8px 40px rgba(0,0,0,.5);
+    }
+    .img-caption {
+      margin-top: 1rem;
+      font-size: .85rem;
+      color: rgba(255,255,255,.4);
+      letter-spacing: .06em;
+      text-transform: uppercase;
+    }
+
+    /* ══ SLIDE DEMO · Final ══════════════════════════════════ */
+    #sdemo {
+      background: linear-gradient(135deg, #0a1628 0%, #0d2445 50%, #003a70 100%);
+      text-align: center;
+    }
+    #sdemo .demo-icon {
+      font-size: 4rem;
+      margin-bottom: 1.2rem;
+      animation: pulse 2s infinite;
+    }
+    @keyframes pulse {
+      0%,100% { transform: scale(1); }
+      50%      { transform: scale(1.08); }
+    }
+    #sdemo h2 {
+      font-size: clamp(2rem, 5vw, 3.5rem);
+      font-weight: 800;
+      color: var(--white);
+      margin-bottom: .8rem;
+    }
+    #sdemo h2 span { color: var(--fabric2); }
+    #sdemo p {
+      color: rgba(255,255,255,.6);
+      font-size: 1.05rem;
+      max-width: 46ch;
+      margin: 0 auto 2rem;
+      line-height: 1.7;
+    }
+    #sdemo .demo-cta {
+      display: inline-flex;
+      align-items: center;
+      gap: .6rem;
+      background: linear-gradient(90deg, var(--fabric), var(--fabric2));
+      color: var(--white);
+      font-weight: 700;
+      font-size: 1.05rem;
+      padding: .85rem 2.2rem;
+      border-radius: 3rem;
+      text-decoration: none;
+      box-shadow: 0 4px 20px rgba(0,120,212,.4);
+      transition: transform .2s, box-shadow .2s;
+    }
+    #sdemo .demo-cta:hover { transform: translateY(-3px); box-shadow: 0 8px 30px rgba(0,120,212,.55); }
+    #sdemo .repo-link {
+      margin-top: 1.2rem;
+      display: block;
+      font-size: .85rem;
+      color: rgba(255,255,255,.35);
+      text-decoration: none;
+    }
+    #sdemo .repo-link:hover { color: var(--fabric2); }
+    .live-dot {
+      display: inline-block;
+      width: 10px; height: 10px;
+      border-radius: 50%;
+      background: #22c55e;
+      margin-right: .4rem;
+      animation: blink 1.2s infinite;
+      vertical-align: middle;
+    }
+    @keyframes blink {
+      0%,100% { opacity: 1; }
+      50%      { opacity: .3; }
+    }
+
+    /* ── responsive tweaks ───────────────────────────────────── */
+    @media (max-width: 600px) {
+      .speakers-grid { gap: 1.2rem; }
+      .speaker-card  { min-width: unset; width: 100%; }
+      #s2 h1         { font-size: 2rem; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ── Nav dots ─────────────────────────────────────────────── -->
+<nav id="nav" aria-label="Navegación por secciones">
+  <a href="#s1" title="Patrocinadores"></a>
+  <a href="#s2" title="Título"></a>
+  <a href="#s3" title="Ponentes"></a>
+  <a href="#s4" title="El reto"></a>
+  <a href="#s5" title="La visión"></a>
+  <a href="#s6" title="Estaciones"></a>
+  <a href="#s7" title="Ingredientes"></a>
+  <a href="#sdemo" title="Demo en vivo"></a>
+</nav>
+
+<!-- ══ SLIDE 1 · Patrocinadores ══════════════════════════════ -->
+<section id="s1">
+  <div class="eyebrow">PowerUS · Evento</div>
+  <h2>Con el apoyo de nuestra comunidad</h2>
+  <p>Esta charla es posible gracias al respaldo de los patrocinadores y amigos de PowerUS.</p>
+  <a class="sponsor-link" href="https://www.powerus.club/amigos#apoyos" target="_blank" rel="noopener">
+    <span class="icon">🤝</span> Ver patrocinadores del evento
+  </a>
+  <div class="powerus-badge">
+    Comunidad <a href="https://www.powerus.club" target="_blank" rel="noopener">#PowerUS</a>
+  </div>
+  <a class="arrow" href="#s2" aria-label="Siguiente">↓</a>
+</section>
+
+<!-- ══ SLIDE 2 · Título ═══════════════════════════════════════ -->
+<section id="s2">
+  <div class="fabric-dot">🍽️</div>
+  <span class="tag">Microsoft Fabric · Real-Time Intelligence</span>
+  <h1>El restaurante autónomo: <span>decisiones en tiempo real</span> más allá de los datos</h1>
+  <p class="subtitle">Eventstream · Eventhouse · Activator · Operations Agent</p>
+  <a class="arrow" href="#s3" aria-label="Siguiente">↓</a>
+</section>
+
+<!-- ══ SLIDE 3 · Ponentes ════════════════════════════════════ -->
+<section id="s3">
+  <div class="section-label">Ponentes</div>
+  <div class="speakers-grid">
+    <div class="speaker-card">
+      <div class="speaker-avatar">DA</div>
+      <div class="speaker-info">
+        <h3>Diana Aguilera Reyna</h3>
+        <span class="mvp-badge"><span class="diamond">◆</span> Microsoft MVP</span>
+      </div>
+    </div>
+    <div class="speaker-card">
+      <div class="speaker-avatar">NL</div>
+      <div class="speaker-info">
+        <h3>Nelson López Centeno</h3>
+        <span class="mvp-badge"><span class="diamond">◆</span> Microsoft MVP</span>
+      </div>
+    </div>
+  </div>
+  <div class="orgs-row">
+    <div class="org-chip"><span class="ico">🔷</span> dataXbi · <small>www.dataXbi.com</small></div>
+    <div class="org-chip"><span class="ico">⚡</span> ADN Fabric</div>
+    <div class="book-chip">
+      <div class="book-cover">Intro MS Fabric</div>
+      <span>Introducción a<br/>Microsoft Fabric · Anaya</span>
+    </div>
+  </div>
+  <a class="arrow" href="#s4" style="color:var(--fabric);" aria-label="Siguiente">↓</a>
+</section>
+
+<!-- ══ SLIDE 4 · Imagen 01 ═══════════════════════════════════ -->
+<section id="s4" class="img-slide">
+  <img src="img/01 - restaurante_personas.png" alt="El restaurante con personas" loading="lazy" />
+  <div class="img-caption">El restaurante tradicional</div>
+  <a class="arrow" href="#s5" aria-label="Siguiente">↓</a>
+</section>
+
+<!-- ══ SLIDE 5 · Imagen 02 ═══════════════════════════════════ -->
+<section id="s5" class="img-slide">
+  <img src="img/02 - restaurante_robots.png" alt="El restaurante con robots" loading="lazy" />
+  <div class="img-caption">El restaurante del futuro</div>
+  <a class="arrow" href="#s6" aria-label="Siguiente">↓</a>
+</section>
+
+<!-- ══ SLIDE 6 · Imagen 03 ═══════════════════════════════════ -->
+<section id="s6" class="img-slide">
+  <img src="img/03 - estaciones.png" alt="Estaciones de cocina" loading="lazy" />
+  <div class="img-caption">Estaciones de cocina · Grill · Fryer · Sauces · Assembly</div>
+  <a class="arrow" href="#s7" aria-label="Siguiente">↓</a>
+</section>
+
+<!-- ══ SLIDE 7 · Imagen 04 ═══════════════════════════════════ -->
+<section id="s7" class="img-slide">
+  <img src="img/04 - ingredientes.png" alt="Ingredientes" loading="lazy" />
+  <div class="img-caption">Inventario de ingredientes en tiempo real</div>
+  <a class="arrow" href="#sdemo" aria-label="Siguiente">↓</a>
+</section>
+
+<!-- ══ SLIDE DEMO · Final ════════════════════════════════════ -->
+<section id="sdemo">
+  <div class="demo-icon">🚀</div>
+  <h2>¡Es hora de la <span>demo en vivo</span>!</h2>
+  <p>
+    Un restaurante que se autogestiona con eventos en tiempo real,
+    decisiones autónomas y aprobación humana en Teams.
+  </p>
+  <a class="demo-cta"
+     href="https://github.com/dataxbi/fabric-iq-restaurant"
+     target="_blank" rel="noopener">
+    <span class="live-dot"></span> Ver el código en GitHub
+  </a>
+  <a class="repo-link"
+     href="https://github.com/dataxbi/fabric-iq-restaurant"
+     target="_blank" rel="noopener">
+    github.com/dataxbi/fabric-iq-restaurant
+  </a>
+</section>
+
+<script>
+  // ── Active nav dot ────────────────────────────────────────
+  const sections = document.querySelectorAll('section[id]');
+  const dots     = document.querySelectorAll('#nav a');
+  const io = new IntersectionObserver(entries => {
+    entries.forEach(e => {
+      if (e.isIntersecting) {
+        dots.forEach(d => d.classList.remove('active'));
+        const dot = document.querySelector(`#nav a[href="#${e.target.id}"]`);
+        if (dot) dot.classList.add('active');
+      }
+    });
+  }, { threshold: 0.55 });
+  sections.forEach(s => io.observe(s));
+
+  // ── Keyboard navigation ───────────────────────────────────
+  const ids = [...sections].map(s => s.id);
+  document.addEventListener('keydown', e => {
+    const curr = ids.findIndex(id => {
+      const el = document.getElementById(id);
+      const r  = el.getBoundingClientRect();
+      return r.top >= -50 && r.top < window.innerHeight * .5;
+    });
+    if (e.key === 'ArrowDown' || e.key === 'PageDown') {
+      e.preventDefault();
+      if (curr < ids.length - 1) document.getElementById(ids[curr + 1]).scrollIntoView({ behavior: 'smooth' });
+    }
+    if (e.key === 'ArrowUp' || e.key === 'PageUp') {
+      e.preventDefault();
+      if (curr > 0) document.getElementById(ids[curr - 1]).scrollIntoView({ behavior: 'smooth' });
+    }
+  });
+</script>
+</body>
+</html>
