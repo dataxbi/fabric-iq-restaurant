@@ -151,10 +151,15 @@
     #s1 .sponsor-link .icon { font-size: 1.2rem; }
     #s1 .powerus-badge {
       margin-top: 2.5rem;
-      font-size: .85rem;
-      color: var(--muted);
     }
-    #s1 .powerus-badge a { color: var(--fabric); text-decoration: none; font-weight: 600; }
+    #s1 .powerus-badge a { display: inline-block; }
+    #s1 .powerus-badge img {
+      height: 64px;
+      width: auto;
+      object-fit: contain;
+      transition: opacity .2s;
+    }
+    #s1 .powerus-badge img:hover { opacity: .8; }
 
     /* ══ SLIDE 2 · Título ════════════════════════════════════ */
     #s2 {
@@ -411,7 +416,9 @@
     <span class="icon">🤝</span> Ver patrocinadores del evento
   </a>
   <div class="powerus-badge">
-    Comunidad <a href="https://www.powerus.club" target="_blank" rel="noopener">#PowerUS</a>
+    <a href="https://www.powerus.club" target="_blank" rel="noopener">
+      <img src="img/logo_powerus.png" alt="PowerUS" />
+    </a>
   </div>
   <a class="arrow" href="#s2" aria-label="Siguiente">↓</a>
 </section>
