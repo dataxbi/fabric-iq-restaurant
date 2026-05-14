@@ -305,7 +305,7 @@ def scenario_multi_channel_pressure():
                 station_id=station,
                 severity="warning",
                 station_status="saturated",
-                queue_size=random.randint(4, 7),
+                queue_size=random.randint(2, 4),
                 capacity=5,
             )
             publish_event(producer, kitchen_event, "kitchen.station.updated")
@@ -432,6 +432,7 @@ def scenario_complete_orders() -> None:
     to_complete = ready[:20]
     producer = EventHubProducerClient.from_connection_string(EVENT_HUB_CONN_STR)
     try:
+        completed_by_station: dict[str, int] = {}
         for order in to_complete:
             _pending_orders.remove(order)
             completed = base_event(
@@ -446,6 +447,25 @@ def scenario_complete_orders() -> None:
                 payment_method=random.choice(["card", "cash", "app"]),
             )
             publish_event(producer, completed, "payment.completed")
+            completed_by_station[order["station_id"]] = completed_by_station.get(order["station_id"], 0) + 1
+
+        # Emit a kitchen recovery event for each station that drained orders
+        pending_by_station = {s: sum(1 for o in _pending_orders if o["station_id"] == s) for s in completed_by_station}
+        for station_id, drained in completed_by_station.items():
+            remaining = pending_by_station.get(station_id, 0)
+            status = "normal" if remaining <= 2 else "busy"
+            recovery = base_event(
+                event_name="kitchen.station.updated",
+                entity_type="station",
+                entity_id=station_id,
+                station_id=station_id,
+                severity="info",
+                station_status=status,
+                queue_size=remaining,
+                capacity=5,
+            )
+            publish_event(producer, recovery, "kitchen.station.updated")
+
         print(f"  ✓ Completed {len(to_complete)} order(s) ({len(_pending_orders)} still pending)")
     finally:
         producer.close()
