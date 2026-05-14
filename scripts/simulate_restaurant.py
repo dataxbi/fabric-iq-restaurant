@@ -85,12 +85,61 @@ def _load_counter() -> tuple[str, int]:
     return today, 1
 
 
-def _save_counter(today: str, counter: int) -> None:
-    """Persist the current counter to the state file."""
+def _save_state(today: str, counter: int) -> None:
+    """Persist counter and pending orders to the state file."""
     _STATE_FILE.write_text(
-        json.dumps({"date": today, "counter": counter}, indent=2),
+        json.dumps(
+            {
+                "date": today,
+                "counter": counter,
+                "pending": _pending,
+                "order_state": _order_state,
+            },
+            indent=2,
+        ),
         encoding="utf-8",
     )
+
+
+def _save_counter(today: str, counter: int) -> None:
+    """Persist the current counter (and pending snapshot) to the state file."""
+    _save_state(today, counter)
+
+
+def _restore_pending() -> None:
+    """Load pending orders from state file on startup.
+
+    Orders that were open when the simulator last stopped are immediately
+    eligible for completion (ready_at set to now) so they get closed in
+    the first _scenario_complete_pending call.
+    """
+    if not _STATE_FILE.exists():
+        return
+    try:
+        data = json.loads(_STATE_FILE.read_text(encoding="utf-8"))
+        today = datetime.now().strftime("%Y%m%d")
+        if data.get("date") != today:
+            return  # stale state from a previous day — ignore
+        saved_pending = data.get("pending", [])
+        saved_state = data.get("order_state", {})
+        restored = 0
+        now = time.time()
+        for entry in saved_pending:
+            oid = entry.get("order_id", "")
+            if not oid:
+                continue
+            if _order_state.get(oid) == "completed":
+                continue
+            # Mark as eligible for immediate completion
+            entry["ready_at"] = now
+            _pending.append(entry)
+            if oid not in _order_state:
+                _order_state[oid] = saved_state.get(oid, "created")
+            restored += 1
+        if restored:
+            print(f"  ↩  Restored {restored} pending order(s) from previous run — will complete on first cycle.")
+    except (json.JSONDecodeError, KeyError, ValueError):
+        pass
 
 
 def next_order_id(prefix: str = "") -> str:
@@ -215,6 +264,18 @@ def _random_cancel() -> str:
     return random.choices(CANCEL_HISTORY, weights=[70, 15, 10, 5], k=1)[0]
 
 
+def _flush_state() -> None:
+    """Persist current counter + pending queue to disk (called after every enqueue/complete)."""
+    today = datetime.now().strftime("%Y%m%d")
+    counter = 0
+    if _STATE_FILE.exists():
+        try:
+            counter = json.loads(_STATE_FILE.read_text(encoding="utf-8")).get("counter", 0)
+        except (json.JSONDecodeError, ValueError):
+            pass
+    _save_state(today, counter)
+
+
 # ─── order lifecycle helpers ──────────────────────────────────────────────────
 
 def _enqueue(order_id: str, station_id: str, channel: str,
@@ -235,6 +296,8 @@ def _enqueue(order_id: str, station_id: str, channel: str,
     while len(_pending) > _MAX_PENDING:
         evicted = _pending.pop(0)
         _order_state.pop(evicted["order_id"], None)
+    # Persist so restarts don't create orphan orders
+    _flush_state()
 
 
 def _emit_order_lifecycle(
@@ -556,10 +619,12 @@ def _scenario_complete_pending(producer) -> None:
         ))
 
     print(f"\n  ✓ Completed {len(to_complete)} order(s) | still pending: {len(_pending)}")
+    _flush_state()
 
 
 def run_continuous(producer, args: argparse.Namespace) -> None:
     """Loop forever running all trigger scenarios until Ctrl+C."""
+    _restore_pending()
     print("\n🔁 Continuous mode | Ctrl+C to stop\n")
     iteration = 0
     try:
