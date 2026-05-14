@@ -51,10 +51,12 @@ fabric-iq-restaurant/
 │   ├── configure_fabric_artifacts.py  # Create RTI dashboard, Activator, and Operations Agent items
 │   ├── configure_user_data_function.py # Create User Data Function for custom actions
 │   ├── clear_tables.py                # Clear all operational KQL tables (keep stations reference)
-│   ├── send_eventstream_events.py     # Send demo events to Event Hub
-│   └── simulate_agent_trigger_events.py # Generate events for Operations Agent testing
+│   └── simulate_restaurant.py         # Unified event simulator (batch, continuous, close-pending)
 ├── user_data_functions/
 │   └── restaurant_operations/         # User Data Function source and definition
+├── web/
+│   ├── index.html                     # Presentation website for live demo events
+│   └── img/                           # Speaker photos, logos, and concept images
 ├── .env.example                        # Environment variables template
 └── .gitignore                          # Git ignore patterns
 ```
@@ -73,7 +75,7 @@ fabric-iq-restaurant/
 ### 1. Clone the Repository
 
 ```bash
-git clone https://github.com/yourusername/fabric-iq-restaurant.git
+git clone https://github.com/dataxbi/fabric-iq-restaurant.git
 cd fabric-iq-restaurant
 ```
 
@@ -216,41 +218,51 @@ Do not enable scripted Operations Agent actions by default. The script has an op
 
 ### Send Demo Events
 
-Publish a peak-hour demo scenario to the Event Hub:
+Run the unified simulator in **batch** mode to publish a peak-hour scenario to Event Hub:
 
 ```bash
-py scripts/send_eventstream_events.py --scenario peak --orders 12 --interval-seconds 0.5
+py scripts/simulate_restaurant.py --orders 12 --scenario peak --interval-seconds 0.5
 ```
 
 Options:
 - `--orders`: Number of synthetic orders to simulate (default: 12)
 - `--scenario`: `normal`, `peak`, or `stock-critical`
-- `--interval-seconds`: Delay between events in seconds (default: 1.0)
+- `--interval-seconds`: Delay between events in seconds (default: 0.5)
 - `--connection-string`: Override connection string (optional; uses `EVENTSTREAM_EVENTHUB_CONNECTION_STRING` from `.env`)
 
-**Example**: Send 50 events with 0.1-second intervals:
+**Example**: Critical stock scenario with 8 orders:
 
 ```bash
-py scripts/send_eventstream_events.py --scenario stock-critical --orders 8 --interval-seconds 0.1
+py scripts/simulate_restaurant.py --scenario stock-critical --orders 8 --interval-seconds 0.1
 ```
 
 ### Test Operations Agent Trigger Conditions
 
-Generate events that specifically trigger the Operations Agent conditions defined in `config/operations_agent_playbook.json`:
+Run the simulator in **continuous** mode to repeatedly emit scenarios that trigger the Operations Agent conditions defined in `config/operations_agent_playbook.json`:
 
 ```bash
-py scripts/simulate_agent_trigger_events.py
+py scripts/simulate_restaurant.py --continuous
 ```
 
-The script runs **continuously** (press `Ctrl+C` to stop) and emits three realistic scenarios every ~7 seconds with randomized values:
+Press `Ctrl+C` to stop — the simulator automatically emits `payment.completed` for all pending orders before exiting so no orphan orders are left in the database.
+
+Options:
+- `--no-agent-loop`: Skip agent recommendation/approval/action events
+- `--cycle-seconds`: Pause between iterations (default: 15s)
+
+The continuous mode emits three realistic scenarios every cycle:
 
 1. **PremiumClientNearSLA**: Premium customer with varied cancellation history, random feedback, and SLA 3–8 minutes remaining
 2. **AnomalousStationQueue**: High queue (5–8 orders) at a random station with a critical ingredient shortage
-3. **MultiChannelPressureWithTrade-off**: Simultaneous pressure across delivery, dine-in, and takeout with varied premium/standard mix
+3. **MultiChannelPressureWithTrade-off**: Simultaneous pressure across delivery, dine-in, and takeout
 
-Each iteration uses randomized `order_id`, SLA values, delay minutes, feedback, and cancellation history to produce realistic, non-repeating event patterns.
+### Close Pending Orders
 
-Monitor the **Operations Agent** in Fabric UI or check the Teams approval channel to see if the agent detects these conditions and recommends `ReprioritizeOrder` or other actions.
+If the simulator was interrupted without draining its queue, close all pending orders:
+
+```bash
+py scripts/simulate_restaurant.py --close-pending
+```
 
 ## Key Scripts
 
@@ -305,12 +317,17 @@ py scripts/clear_tables.py          # clear all tables
 py scripts/clear_tables.py --dry-run  # preview commands without executing
 ```
 
-### `send_eventstream_events.py`
+### `simulate_restaurant.py`
 
-Event generator using Azure Event Hub SDK:
-- Generates synthetic restaurant events for orders, kitchen stations, inventory, delays, sentiment, and payments
-- Batches events for efficiency
-- Sends via Event Hub producer client
+Unified event simulator with three modes:
+
+| Mode | Command | Description |
+|---|---|---|
+| Batch | `--orders N --scenario peak` | One-shot pass, N orders fully closed before the script exits |
+| Continuous | `--continuous` | Loop forever emitting trigger scenarios; Ctrl+C drains pending orders before exit |
+| Close-pending | `--close-pending` | Emit `payment.completed` for all orders left open from a previous run, then exit |
+
+Emits the full order lifecycle: `order.created` → `order.prep.delayed` (if delayed) → `payment.completed`. Also emits `kitchen.station.updated`, `inventory.level.changed`, `customer.sentiment.signal`, and the full agent/approval/action traceability chain.
 
 ### `configure_user_data_function.py`
 
@@ -356,10 +373,13 @@ py scripts/configure_fabric_artifacts.py
 # 5. Configure the custom action User Data Function
 py scripts/configure_user_data_function.py
 
-# 6. Send demo events
-py scripts/send_eventstream_events.py --scenario peak --orders 12 --interval-seconds 0.5
+# 6. Send demo events — batch mode
+py scripts/simulate_restaurant.py --scenario peak --orders 12 --interval-seconds 0.5
 
-# 7. Query data (in Fabric portal)
+# 7. Or run continuously to trigger Operations Agent conditions (Ctrl+C closes pending orders)
+py scripts/simulate_restaurant.py --continuous
+
+# 8. Query data (in Fabric portal)
 # KQL: raw_restaurant_events | count
 # KQL: order_events | count
 ```
@@ -368,10 +388,10 @@ py scripts/send_eventstream_events.py --scenario peak --orders 12 --interval-sec
 
 ### "Session token expired" error
 
-This is a temporary authentication issue. Retry the command:
+This is a temporary authentication issue. Run `az login` and retry the command:
 
 ```bash
-py scripts/send_eventstream_events.py --scenario peak --orders 12 --interval-seconds 0.5
+py scripts/simulate_restaurant.py --scenario peak --orders 12 --interval-seconds 0.5
 ```
 
 ### "Missing EVENTSTREAM_EVENTHUB_CONNECTION_STRING"
@@ -469,4 +489,5 @@ MIT
 
 ## Author
 
-Copilot
+Nelson López & Diana Aguilera — [dataxbi.com](https://dataxbi.com) / [adnfabric.com](https://adnfabric.com)  
+Built with GitHub Copilot
