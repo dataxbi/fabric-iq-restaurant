@@ -143,13 +143,37 @@ order_events
             "visual_type": "table",
         },
         {
+            "title": "Station Status — Live",
+            "query": """
+let station_load =
+    kitchen_events
+    | where event_time >= ago(30m)
+    | summarize arg_max(event_time, *) by station_id;
+let active_orders =
+    order_events
+    | where event_time >= ago(30m)
+    | summarize ActiveOrders=dcount(order_id) by station_id;
+station_load
+| join kind=leftouter stations on station_id
+| join kind=leftouter active_orders on station_id
+| extend effective_capacity = iif(isnotnull(max_capacity), max_capacity, capacity)
+| extend load_pct = iif(effective_capacity > 0, round(100.0 * todouble(queue_size) / todouble(effective_capacity), 1), real(0))
+| extend drain_minutes = iif(queue_size > effective_capacity and avg_prep_minutes > 0, round(todouble(queue_size - effective_capacity) * avg_prep_minutes / todouble(effective_capacity), 1), real(0))
+| extend ActiveOrders = coalesce(ActiveOrders, 0)
+| project station_id, display_name, specialization, station_status, ActiveOrders, queue_size, effective_capacity, load_pct, drain_minutes, severity
+| order by load_pct desc
+""",
+            "layout": {"x": 0, "y": 6, "width": 14, "height": 7},
+            "visual_type": "table",
+        },
+        {
             "title": "Station Queue Pressure",
             "query": """
 kitchen_events
 | summarize MaxQueue=max(queue_size), AvgQueue=round(avg(queue_size), 2), Events=count() by station_id, bin(event_time, 5m)
 | order by event_time desc
 """,
-            "layout": {"x": 0, "y": 6, "width": 8, "height": 6},
+            "layout": {"x": 14, "y": 6, "width": 10, "height": 7},
             "visual_type": "line",
         },
         {
@@ -161,7 +185,7 @@ inventory_events
 | project event_time, ingredient_id, stock_pct, threshold_pct, severity
 | order by stock_pct asc
 """,
-            "layout": {"x": 8, "y": 6, "width": 8, "height": 6},
+            "layout": {"x": 0, "y": 13, "width": 8, "height": 6},
             "visual_type": "table",
         },
         {
@@ -174,7 +198,7 @@ union
 | order by event_time desc
 | take 100
 """,
-            "layout": {"x": 16, "y": 6, "width": 8, "height": 6},
+            "layout": {"x": 8, "y": 13, "width": 16, "height": 6},
             "visual_type": "table",
         },
         {
@@ -199,7 +223,7 @@ DelayedOrders
 | project delay_time, order_id, channel, station_id, delay_minutes, queue_size, sentiment, reason
 | order by delay_time desc
 """,
-            "layout": {"x": 0, "y": 12, "width": 24, "height": 7},
+            "layout": {"x": 0, "y": 19, "width": 24, "height": 7},
             "visual_type": "table",
         },
     ]
