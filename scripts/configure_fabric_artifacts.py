@@ -146,13 +146,19 @@ order_events
             "extra_visual_options": {"multiStat__valueColumn": "Total"},
         },
         {
-            "title": "Active Orders (10 min)",
+            "title": "Active Orders",
             "query": """
-order_events
-| where event_time >= ago(10m)
-| summarize arg_max(event_time, order_status) by order_id
-| where order_status !in ("completed","cancelled")
-| summarize Total = count()
+let orders_today = order_events
+| where event_time >= startofday(now())
+| where event_name == "order.created"
+| distinct order_id;
+let closed_today = order_events
+| where event_time >= startofday(now())
+| where event_name == "payment.completed"
+| distinct order_id;
+orders_today
+| where order_id !in (closed_today)
+| summarize Total = dcount(order_id)
 """,
             "layout": {"x": 6, "y": 0, "width": 6, "height": 3},
             "visual_type": "card",
@@ -650,6 +656,11 @@ def build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="Attempt preview Operations Agent Power Automate action definitions. Disabled by default because the API can corrupt definition readback.",
     )
+    parser.add_argument(
+        "--dashboard-only",
+        action="store_true",
+        help="Only create/update the KQL dashboard; skip Activator and Operations Agent.",
+    )
     return parser
 
 
@@ -688,6 +699,9 @@ def main() -> None:
         dashboard["id"],
         build_dashboard_parts(args.dashboard_name, database_name, query_service_uri),
     )
+    if args.dashboard_only:
+        print(f"[dashboard-only] Dashboard '{args.dashboard_name}' id={dashboard['id']} updated. Skipping Activator and Operations Agent.")
+        return
     activator = client.create_item_with_definition(
         workspace_id,
         args.activator_name,
