@@ -72,6 +72,43 @@ Se usará **human-in-the-loop en Teams**:
 
 `raw_restaurant_events` recibe el flujo crudo desde Eventstream. Las tablas operacionales derivadas guardan el detalle operativo normalizado en tiempo real y alimentan RTI/Eventhouse.
 
+### Tablas de referencia
+
+#### `stations` — Estaciones de cocina
+
+Una **estación de cocina** es una unidad de producción especializada dentro de la cocina del restaurante. Cada estación agrupa un conjunto de equipos del mismo tipo (por ejemplo, varias hornillas de parrilla, varias freidoras) y puede procesar varios pedidos simultáneamente en paralelo. El número máximo de pedidos simultáneos es `max_capacity`.
+
+La cocina del restaurante tiene **4 estaciones**:
+
+| `station_id` | `display_name` | `specialization` | `max_capacity` | `avg_prep_minutes` |
+|---|---|---|---|---|
+| `grill` | Parrilla | Carnes y pescados a la brasa | 4 | 8 min |
+| `fryer` | Freidora | Fritos, patatas, empanados | 4 | 6 min |
+| `sauces` | Salsas y guarniciones | Arroces, verduras, salsas | 3 | 3 min |
+| `assembly` | Montaje y emplatado | Composición final del plato | 5 | 2 min |
+
+**Relación con los pedidos:**
+- Un pedido (`order_events`) se asigna a una estación mediante `station_id`.
+- La estación procesa el pedido dentro de su `max_capacity`. Si la cola (`queue_size` en `kitchen_events`) supera la capacidad, los pedidos se acumulan y el tiempo de espera aumenta.
+- El tiempo estimado de desatasco se calcula como: `(queue_size - max_capacity) × avg_prep_minutes / max_capacity`.
+- El retraso acumulado en una estación (`delay_minutes` en `order_events`) se usa para detectar riesgo de SLA y desencadenar recomendaciones del Operations Agent.
+
+**Relación con el inventario:**
+- Cada estación consume ingredientes del inventario (`inventory_events`). Si un ingrediente cae por debajo de su umbral crítico (`stock_pct < threshold_pct`), la estación asociada puede quedarse sin materia prima, lo que eleva la cola y el riesgo de SLA.
+
+**Campos de la tabla:**
+
+| Campo | Tipo | Descripción |
+|-------|------|-------------|
+| `station_id` | string | Identificador canónico de la estación |
+| `display_name` | string | Nombre legible |
+| `specialization` | string | Tipo de platos que prepara |
+| `max_capacity` | long | Unidades que puede procesar en paralelo |
+| `avg_prep_minutes` | real | Tiempo medio de preparación por unidad |
+| `is_active` | bool | Si la estación está operativa |
+
+Se puebla con `.set-or-replace` desde `scripts/eventhouse_schema.py` (datos estáticos, idempotente).
+
 ### Modelo operacional en Eventhouse
 
 La demo usa tablas KQL operacionales, no un modelo semántico analítico:
@@ -83,6 +120,7 @@ La demo usa tablas KQL operacionales, no un modelo semántico analítico:
 5. `agent_events`: recomendaciones del Operations Agent.
 6. `approval_events`: aprobaciones/rechazos humanos.
 7. `action_events`: acciones disparadas y resultado.
+8. `stations` *(referencia)*: definición estática de las 4 estaciones de cocina con capacidad y tiempo medio de preparación.
 
 El reparto desde `raw_restaurant_events` hacia las tablas operacionales se implementa en Eventhouse con funciones KQL y update policies. Eventstream se mantiene como capa de ingesta/enrutamiento y no como lugar principal para reglas de modelado operativo.
 
