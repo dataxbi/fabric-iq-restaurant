@@ -154,7 +154,7 @@ let active_orders =
     order_events
     | where event_time >= ago(5m)
     | summarize arg_max(event_time, order_status) by order_id, station_id
-    | where order_status in ("created", "in_prep")
+    | where order_status !in ("completed", "cancelled")
     | summarize ActiveOrders=count() by station_id;
 stations
 | join kind=leftouter station_load on station_id

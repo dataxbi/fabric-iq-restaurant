@@ -35,8 +35,34 @@ INGREDIENTS = ["beef", "chicken", "fries", "sauce_bbq", "sauce_mayo"]
 FEEDBACK_LEVELS = ["muy_negativo", "negativo", "neutral", "positivo"]
 CANCEL_HISTORY = ["none", "cancelado_1_vez", "cancelado_2_veces", "cancelado_3_veces"]
 
+# Buffer of pending orders waiting to be completed.
+# Each entry: {"order_id": str, "station_id": str, "channel": str, "ready_at": float}
+_pending_orders: list[dict] = []
+# Max orders held in buffer before oldest are dropped (prevents unbounded growth)
+_MAX_PENDING = 30
+
 def now_iso() -> str:
     return datetime.utcnow().isoformat() + "Z"
+
+
+def enqueue_order(order_id: str, station_id: str, channel: str, prep_seconds: int = None) -> None:
+    """Register an order as pending so it can be completed later.
+
+    prep_seconds: simulated prep time before the order is ready to complete.
+    Defaults to a random value based on the station's avg_prep_minutes.
+    """
+    if prep_seconds is None:
+        # Simulate realistic prep times: 30s–3min for demo speed
+        prep_seconds = random.randint(30, 180)
+    _pending_orders.append({
+        "order_id": order_id,
+        "station_id": station_id,
+        "channel": channel,
+        "ready_at": time.time() + prep_seconds,
+    })
+    # Keep buffer bounded — drop oldest if over limit
+    while len(_pending_orders) > _MAX_PENDING:
+        _pending_orders.pop(0)
 
 
 def random_sla_minutes() -> int:
@@ -161,6 +187,8 @@ def scenario_premium_client_near_sla():
         )
         publish_event(producer, kitchen, "kitchen.station.updated")
 
+        channel = order_created["channel"]
+        enqueue_order(order_id, station, channel)
         print(f"  ✓ Premium {order_id}: SLA={sla_min}min, delay={delay_min}min, cancel={cancel_hist}, feedback={feedback}")
     finally:
         producer.close()
@@ -214,8 +242,9 @@ def scenario_anomalous_station_queue():
                 sla_remaining=random_sla_minutes(),
             )
             publish_event(producer, order_event, "order.prep.delayed")
+            enqueue_order(order_id, station, order_event["channel"])
 
-        kitchen_event = base_event(
+        kitchen_event= base_event(
             event_name="kitchen.station.updated",
             entity_type="station",
             entity_id=station,
@@ -265,6 +294,7 @@ def scenario_multi_channel_pressure():
                     queue_size=random.randint(3, 7),
                 )
                 publish_event(producer, order_event, "order.prep.delayed")
+                enqueue_order(order_id, order_event["station_id"], channel)
 
         for station in STATIONS:
             kitchen_event = base_event(
@@ -386,6 +416,39 @@ def scenario_agent_decision_loop():
         producer.close()
 
 
+def scenario_complete_orders() -> None:
+    """Emit payment.completed events for pending orders whose prep time has elapsed.
+
+    Picks up to 5 ready orders per call to avoid bursts. Orders that are not
+    yet ready are left in the buffer for a future iteration.
+    """
+    now = time.time()
+    ready = [o for o in _pending_orders if o["ready_at"] <= now]
+    if not ready:
+        return
+
+    # Process at most 5 completions per cycle to smooth the flow
+    to_complete = ready[:5]
+    producer = EventHubProducerClient.from_connection_string(EVENT_HUB_CONN_STR)
+    try:
+        for order in to_complete:
+            _pending_orders.remove(order)
+            completed = base_event(
+                event_name="payment.completed",
+                entity_type="order",
+                entity_id=order["order_id"],
+                order_id=order["order_id"],
+                station_id=order["station_id"],
+                channel=order["channel"],
+                severity="info",
+                order_status="completed",
+                payment_method=random.choice(["card", "cash", "app"]),
+            )
+            publish_event(producer, completed, "payment.completed")
+        print(f"  ✓ Completed {len(to_complete)} order(s) ({len(_pending_orders)} still pending)")
+    finally:
+        producer.close()
+
 
 def main():
     """Run trigger scenarios in continuous loop until interrupted."""
@@ -409,6 +472,9 @@ def main():
             time.sleep(1)
 
             scenario_agent_decision_loop()
+            time.sleep(1)
+
+            scenario_complete_orders()
             time.sleep(5)
 
             print(f"✅ Iteration {iteration} complete. Cycling events...")
