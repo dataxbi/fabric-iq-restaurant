@@ -120,23 +120,48 @@ def build_dashboard_parts(title: str, database_name: str, query_service_uri: str
     time_parameter_id = str(uuid.uuid5(DASHBOARD_NAMESPACE, "parameter:time-range"))
     tile_definitions = [
         {
-            "title": "Operations Summary — Today",
+            "title": "Orders Today",
             "query": """
-let orders_today      = toscalar(order_events | where event_time >= startofday(now()) and event_name == "order.created" | count);
-let active_orders     = toscalar(order_events | where event_time >= ago(10m) | summarize arg_max(event_time, order_status) by order_id | where order_status !in ("completed","cancelled") | count);
-let completed_today   = toscalar(order_events | where event_time >= startofday(now()) and event_name == "payment.completed" | count);
-let delayed_ids       = order_events | where event_time >= startofday(now()) and event_name == "order.prep.delayed" | distinct order_id;
-let completed_delayed = toscalar(order_events | where event_time >= startofday(now()) and event_name == "payment.completed" | where order_id in (delayed_ids) | count);
-datatable(Metric:string, Value:long)
-[
-    "Orders Today",         orders_today,
-    "Active Orders",        active_orders,
-    "Completed Today",      completed_today,
-    "Completed with Delay", completed_delayed
-]
+order_events
+| where event_time >= startofday(now()) and event_name == "order.created"
+| count
 """,
-            "layout": {"x": 0, "y": 0, "width": 24, "height": 7},
-            "visual_type": "multiStat",
+            "layout": {"x": 0, "y": 0, "width": 6, "height": 3},
+            "visual_type": "table",
+        },
+        {
+            "title": "Active Orders (10 min)",
+            "query": """
+order_events
+| where event_time >= ago(10m)
+| summarize arg_max(event_time, order_status) by order_id
+| where order_status !in ("completed","cancelled")
+| count
+""",
+            "layout": {"x": 6, "y": 0, "width": 6, "height": 3},
+            "visual_type": "table",
+        },
+        {
+            "title": "Completed Today",
+            "query": """
+order_events
+| where event_time >= startofday(now()) and event_name == "payment.completed"
+| count
+""",
+            "layout": {"x": 12, "y": 0, "width": 6, "height": 3},
+            "visual_type": "table",
+        },
+        {
+            "title": "Completed with Delay",
+            "query": """
+let delayed_ids = order_events | where event_time >= startofday(now()) and event_name == "order.prep.delayed" | distinct order_id;
+order_events
+| where event_time >= startofday(now()) and event_name == "payment.completed"
+| where order_id in (delayed_ids)
+| count
+""",
+            "layout": {"x": 18, "y": 0, "width": 6, "height": 3},
+            "visual_type": "table",
         },
         {
             "title": "Raw Event Throughput",
