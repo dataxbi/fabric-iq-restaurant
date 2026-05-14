@@ -190,6 +190,19 @@
       flex-wrap: wrap;
       width: 100%;
     }
+    .speaker-col {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    .speaker-name {
+      margin-top: .9rem;
+      font-size: 1.35rem;
+      font-weight: 700;
+      color: var(--dark);
+      text-align: center;
+      line-height: 1.25;
+    }
     .speaker-card {
       position: relative;
       width: clamp(260px, 36vw, 480px);
@@ -205,17 +218,12 @@
       object-position: top;
       display: block;
     }
-    .speaker-overlay {
-      position: absolute;
-      bottom: 0; left: 0; right: 0;
-      padding: 3rem 1.1rem 1rem;
-      background: linear-gradient(transparent, rgba(0,0,0,.82));
-      text-align: right;
-    }
-    .speaker-overlay h3 {
-      font-size: 1.15rem;
+    .speaker-name {
+      margin-top: .9rem;
+      font-size: 1.25rem;
       font-weight: 700;
-      color: var(--white);
+      color: var(--dark);
+      text-align: center;
       line-height: 1.25;
     }
 
@@ -391,17 +399,17 @@
 <section id="s3">
   <div class="section-label">Ponentes</div>
   <div class="speakers-grid">
-    <div class="speaker-card">
-      <img src="img/diana_aguilera_reyna.png" alt="Diana Aguilera Reyna" />
-      <div class="speaker-overlay">
-        <h3>Diana Aguilera Reyna</h3>
+    <div class="speaker-col">
+      <div class="speaker-card">
+        <img src="img/diana_aguilera_reyna.png" alt="Diana Aguilera Reyna" />
       </div>
+      <p class="speaker-name">Diana Aguilera Reyna</p>
     </div>
-    <div class="speaker-card">
-      <img src="img/nelson_lopez_centeno.png" alt="Nelson López Centeno" />
-      <div class="speaker-overlay">
-        <h3>Nelson López Centeno</h3>
+    <div class="speaker-col">
+      <div class="speaker-card">
+        <img src="img/nelson_lopez_centeno.png" alt="Nelson López Centeno" />
       </div>
+      <p class="speaker-name">Nelson López Centeno</p>
     </div>
   </div>
   <div class="orgs-row">
