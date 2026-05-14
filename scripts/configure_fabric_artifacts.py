@@ -127,14 +127,16 @@ let active_orders     = toscalar(order_events | where event_time >= ago(10m) | s
 let completed_today   = toscalar(order_events | where event_time >= startofday(now()) and event_name == "payment.completed" | count);
 let delayed_ids       = order_events | where event_time >= startofday(now()) and event_name == "order.prep.delayed" | distinct order_id;
 let completed_delayed = toscalar(order_events | where event_time >= startofday(now()) and event_name == "payment.completed" | where order_id in (delayed_ids) | count);
-print
-    ['Orders Today']          = orders_today,
-    ['Active Orders (10 min)'] = active_orders,
-    ['Completed Today']        = completed_today,
-    ['Completed with Delay']   = completed_delayed
+datatable(Metric:string, Value:long)
+[
+    "Orders Today",         orders_today,
+    "Active Orders",        active_orders,
+    "Completed Today",      completed_today,
+    "Completed with Delay", completed_delayed
+]
 """,
-            "layout": {"x": 0, "y": 0, "width": 24, "height": 4},
-            "visual_type": "table",
+            "layout": {"x": 0, "y": 0, "width": 24, "height": 7},
+            "visual_type": "multiStat",
         },
         {
             "title": "Raw Event Throughput",
@@ -143,7 +145,7 @@ raw_restaurant_events
 | summarize Events=count() by bin(event_time, 1m), event_name
 | order by event_time asc
 """,
-            "layout": {"x": 0, "y": 4, "width": 12, "height": 6},
+            "layout": {"x": 0, "y": 7, "width": 12, "height": 6},
             "visual_type": "line",
         },
         {
@@ -163,7 +165,7 @@ order_events
 | order by event_time desc
 | take 50
 """,
-            "layout": {"x": 12, "y": 4, "width": 12, "height": 6},
+            "layout": {"x": 12, "y": 7, "width": 12, "height": 6},
             "visual_type": "table",
         },
         {
@@ -186,7 +188,7 @@ stations
 | project station_id, display_name, specialization, station_status, active_orders, queue_size, max_capacity, load_pct, drain_minutes, severity
 | order by load_pct desc
 """,
-            "layout": {"x": 0, "y": 10, "width": 14, "height": 7},
+            "layout": {"x": 0, "y": 13, "width": 14, "height": 7},
             "visual_type": "table",
         },
         {
@@ -201,7 +203,7 @@ order_events
     by station_id, bin(event_time, 5m)
 | order by event_time asc
 """,
-            "layout": {"x": 14, "y": 10, "width": 10, "height": 7},
+            "layout": {"x": 14, "y": 13, "width": 10, "height": 7},
             "visual_type": "line",
         },
         {
@@ -213,7 +215,7 @@ inventory_events
 | project event_time, ingredient_id, stock_pct, threshold_pct, severity
 | order by stock_pct asc
 """,
-            "layout": {"x": 0, "y": 17, "width": 8, "height": 6},
+            "layout": {"x": 0, "y": 20, "width": 8, "height": 6},
             "visual_type": "table",
         },
         {
@@ -226,7 +228,7 @@ union
 | order by event_time desc
 | take 100
 """,
-            "layout": {"x": 8, "y": 17, "width": 16, "height": 6},
+            "layout": {"x": 8, "y": 20, "width": 16, "height": 6},
             "visual_type": "table",
         },
         {
@@ -251,7 +253,7 @@ DelayedOrders
 | project delay_time, order_id, channel, station_id, delay_minutes, queue_size, sentiment, reason
 | order by delay_time desc
 """,
-            "layout": {"x": 0, "y": 23, "width": 24, "height": 7},
+            "layout": {"x": 0, "y": 26, "width": 24, "height": 7},
             "visual_type": "table",
         },
     ]
