@@ -96,13 +96,28 @@ def visual_options() -> dict:
     }
 
 
+def card_visual_options(value_column: str = None) -> dict:
+    """Visual options for 'card' (single-stat) tiles."""
+    return {
+        "multiStat__textSize": "auto",
+        "multiStat__valueColumn": value_column,
+        "colorRulesDisabled": False,
+        "colorStyle": "light",
+        "colorRules": [],
+    }
+
+
 def dashboard_tile(
     title: str,
     query_id: str,
     layout: dict,
     page_id: str,
     visual_type: str = "table",
+    extra_visual_options: dict | None = None,
 ) -> dict:
+    opts = card_visual_options() if visual_type == "card" else visual_options()
+    if extra_visual_options:
+        opts.update(extra_visual_options)
     return {
         "id": str(uuid.uuid5(DASHBOARD_NAMESPACE, f"tile:{title}")),
         "title": title,
@@ -110,7 +125,7 @@ def dashboard_tile(
         "pageId": page_id,
         "visualType": visual_type,
         "queryRef": {"kind": "query", "queryId": query_id},
-        "visualOptions": visual_options(),
+        "visualOptions": opts,
     }
 
 
@@ -124,10 +139,11 @@ def build_dashboard_parts(title: str, database_name: str, query_service_uri: str
             "query": """
 order_events
 | where event_time >= startofday(now()) and event_name == "order.created"
-| count
+| summarize Total = count()
 """,
             "layout": {"x": 0, "y": 0, "width": 6, "height": 3},
-            "visual_type": "table",
+            "visual_type": "card",
+            "extra_visual_options": {"multiStat__valueColumn": "Total"},
         },
         {
             "title": "Active Orders (10 min)",
@@ -136,20 +152,22 @@ order_events
 | where event_time >= ago(10m)
 | summarize arg_max(event_time, order_status) by order_id
 | where order_status !in ("completed","cancelled")
-| count
+| summarize Total = count()
 """,
             "layout": {"x": 6, "y": 0, "width": 6, "height": 3},
-            "visual_type": "table",
+            "visual_type": "card",
+            "extra_visual_options": {"multiStat__valueColumn": "Total"},
         },
         {
             "title": "Completed Today",
             "query": """
 order_events
 | where event_time >= startofday(now()) and event_name == "payment.completed"
-| count
+| summarize Total = count()
 """,
             "layout": {"x": 12, "y": 0, "width": 6, "height": 3},
-            "visual_type": "table",
+            "visual_type": "card",
+            "extra_visual_options": {"multiStat__valueColumn": "Total"},
         },
         {
             "title": "Completed with Delay",
@@ -158,10 +176,11 @@ let delayed_ids = order_events | where event_time >= startofday(now()) and event
 order_events
 | where event_time >= startofday(now()) and event_name == "payment.completed"
 | where order_id in (delayed_ids)
-| count
+| summarize Total = count()
 """,
             "layout": {"x": 18, "y": 0, "width": 6, "height": 3},
-            "visual_type": "table",
+            "visual_type": "card",
+            "extra_visual_options": {"multiStat__valueColumn": "Total"},
         },
         {
             "title": "Raw Event Throughput",
@@ -301,6 +320,7 @@ DelayedOrders
                 tile_definition["layout"],
                 page_id,
                 tile_definition["visual_type"],
+                tile_definition.get("extra_visual_options"),
             )
         )
     dashboard = {
@@ -334,7 +354,7 @@ DelayedOrders
             }
         ],
         "queries": queries,
-        "schema_version": "52",
+        "schema_version": "54",
         "title": title,
     }
     return [inline_part("RealTimeDashboard.json", dashboard)]
