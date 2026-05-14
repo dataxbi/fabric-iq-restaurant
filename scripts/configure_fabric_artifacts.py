@@ -255,6 +255,7 @@ stations
             "query": """
 order_events
 | where event_time > ago(1h)
+| where isnotempty(station_id)
 | summarize
     Created  = countif(event_name == "order.created"),
     Delayed  = countif(event_name == "order.prep.delayed"),
