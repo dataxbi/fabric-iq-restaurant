@@ -173,6 +173,7 @@ stations
             "title": "Station Queue Pressure",
             "query": """
 kitchen_events
+| where event_time > ago(1h)
 | summarize MaxQueue=max(queue_size), AvgQueue=round(avg(queue_size), 2), Events=count() by station_id, bin(event_time, 5m)
 | order by event_time desc
 """,
