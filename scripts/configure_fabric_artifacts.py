@@ -132,10 +132,17 @@ raw_restaurant_events
         {
             "title": "Delayed Orders",
             "query": """
+let station_load =
+    order_events
+    | where event_time >= ago(10m)
+    | summarize arg_max(event_time, order_status) by order_id, station_id
+    | where order_status !in ("completed", "cancelled")
+    | summarize active_orders=count() by station_id;
 order_events
 | where event_name == "order.prep.delayed"
-| extend queue_size = tolong(payload.queue_size)
-| project event_time, order_id, channel, station_id, delay_minutes, queue_size, severity
+| join kind=leftouter station_load on station_id
+| extend active_orders = coalesce(active_orders, 0)
+| project event_time, order_id, channel, station_id, delay_minutes, active_orders, severity
 | order by event_time desc
 | take 50
 """,
