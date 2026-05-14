@@ -210,6 +210,13 @@
       overflow: hidden;
       box-shadow: 0 12px 48px rgba(0,0,0,.22);
       flex-shrink: 0;
+      display: block;
+      text-decoration: none;
+      transition: transform .2s, box-shadow .2s;
+    }
+    .speaker-card:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 18px 56px rgba(0,120,212,.25);
     }
     .speaker-card img {
       width: 100%;
@@ -392,15 +399,15 @@
   <div class="section-label">Ponentes</div>
   <div class="speakers-grid">
     <div class="speaker-col">
-      <div class="speaker-card">
+      <a href="https://www.linkedin.com/in/diana-aguilera-reyna/" target="_blank" rel="noopener" class="speaker-card">
         <img src="img/diana_aguilera_reyna.png" alt="Diana Aguilera Reyna" />
-      </div>
+      </a>
       <p class="speaker-name">Diana Aguilera Reyna</p>
     </div>
     <div class="speaker-col">
-      <div class="speaker-card">
+      <a href="https://www.linkedin.com/in/nelson-lopez-centeno/" target="_blank" rel="noopener" class="speaker-card">
         <img src="img/nelson_lopez_centeno.png" alt="Nelson López Centeno" />
-      </div>
+      </a>
       <p class="speaker-name">Nelson López Centeno</p>
     </div>
   </div>
