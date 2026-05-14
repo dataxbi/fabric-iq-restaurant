@@ -1,8 +1,13 @@
 #!/usr/bin/env python3
-"""Simulate events to trigger Operations Agent conditions.
+"""Simulate events to trigger Operations Agent conditions and agent decisions.
 
 The emitted JSON matches the repository routing pattern:
-raw_restaurant_events -> update policies -> order_events/kitchen_events/inventory_events.
+raw_restaurant_events -> update policies ->
+    order_events / kitchen_events / inventory_events /
+    agent_events / approval_events / action_events.
+
+Trigger scenarios (3 types) feed order/kitchen/inventory tables.
+Decision scenarios simulate the full loop: recommendation -> approval -> action.
 """
 
 import os
@@ -279,34 +284,143 @@ def scenario_multi_channel_pressure():
         producer.close()
 
 
+RECOMMENDATION_TYPES = [
+    "reprioritize_order",
+    "restock_ingredient",
+    "reassign_station",
+    "throttle_channel",
+]
+APPROVERS = ["manager_on_duty", "shift_supervisor", "auto_approved"]
+ACTION_TYPES = {
+    "reprioritize_order": "action.reprioritize_order",
+    "restock_ingredient": "action.restock_ingredient",
+    "reassign_station": "action.reassign_station",
+    "throttle_channel": "action.throttle_channel",
+}
+
+
+def scenario_agent_decision_loop():
+    """
+    AgentDecisionLoop: Simulate the full traceability chain.
+
+    Emits: agent.recommendation -> approval.decision -> action.executed
+    Linked by recommendation_id so the trazabilidad query captures the full trace.
+    Randomly includes rejections (~20%) and action failures (~10%).
+    """
+    print("\n=== Scenario: AgentDecisionLoop ===")
+    producer = EventHubProducerClient.from_connection_string(EVENT_HUB_CONN_STR)
+    try:
+        recommendation_id = f"REC-{str(uuid4())[:8].upper()}"
+        order_id = f"ORD-{random.randint(1000, 9999)}"
+        station = random.choice(STATIONS)
+        channel = random.choice(CHANNELS)
+        rec_type = random.choice(RECOMMENDATION_TYPES)
+        priority = random.randint(1, 5)
+        confidence = round(random.uniform(0.70, 0.99), 2)
+        sla_remaining = random.randint(3, 12)
+
+        # 1. Agent generates a recommendation
+        recommendation = base_event(
+            event_name="agent.recommendation",
+            entity_type="recommendation",
+            entity_id=recommendation_id,
+            order_id=order_id,
+            station_id=station,
+            channel=channel,
+            severity="warning" if priority >= 3 else "info",
+            recommendation_id=recommendation_id,
+            priority=priority,
+            confidence=confidence,
+            recommendation_type=rec_type,
+            sla_remaining=sla_remaining,
+            reason=f"Detected {rec_type.replace('_', ' ')} opportunity with {confidence:.0%} confidence",
+        )
+        publish_event(producer, recommendation, "agent.recommendation")
+        time.sleep(0.3)
+
+        # 2. Human (or auto) approval decision — 80% approved, 20% rejected
+        is_approved = random.random() < 0.80
+        approver = random.choice(APPROVERS)
+        approval_status = "approved" if is_approved else "rejected"
+        approval = base_event(
+            event_name="approval.decision",
+            entity_type="recommendation",
+            entity_id=recommendation_id,
+            order_id=order_id,
+            station_id=station,
+            channel=channel,
+            severity="info" if is_approved else "warning",
+            recommendation_id=recommendation_id,
+            approver=approver,
+            approval_status=approval_status,
+            reason="Within SLA tolerance" if is_approved else "Risk too high at this time",
+        )
+        publish_event(producer, approval, "approval.decision")
+        time.sleep(0.3)
+
+        # 3. If approved, execute the action (90% success, 10% failure)
+        if is_approved:
+            action_status = "completed" if random.random() < 0.90 else "failed"
+            action_id = f"ACT-{str(uuid4())[:8].upper()}"
+            action = base_event(
+                event_name=ACTION_TYPES[rec_type],
+                entity_type="action",
+                entity_id=action_id,
+                order_id=order_id,
+                station_id=station,
+                channel=channel,
+                severity="info" if action_status == "completed" else "critical",
+                action_id=action_id,
+                action_status=action_status,
+                recommendation_id=recommendation_id,
+                action_type=ACTION_TYPES[rec_type],
+            )
+            publish_event(producer, action, ACTION_TYPES[rec_type])
+
+        print(
+            f"  ✓ {recommendation_id}: type={rec_type}, priority={priority}, "
+            f"confidence={confidence:.0%}, approval={approval_status}"
+            + (f", action={action_status}" if is_approved else "")
+        )
+    finally:
+        producer.close()
+
+
+
 def main():
     """Run trigger scenarios in continuous loop until interrupted."""
     print("Starting Operations Agent trigger event simulator (continuous mode)...")
     print(f"Event Hub: {EVENT_HUB_CONN_STR[:30]}...")
     print("Press Ctrl+C to stop.\n")
-    
+
     iteration = 0
     try:
         while True:
             iteration += 1
             print(f"\n--- Iteration {iteration} ---")
-            
+
             scenario_premium_client_near_sla()
             time.sleep(1)
-            
+
             scenario_anomalous_station_queue()
             time.sleep(1)
-            
+
             scenario_multi_channel_pressure()
+            time.sleep(1)
+
+            scenario_agent_decision_loop()
             time.sleep(5)
-            
+
             print(f"✅ Iteration {iteration} complete. Cycling events...")
     except KeyboardInterrupt:
         print("\n\n⏹ Simulator stopped by user.")
         print("Events have been published. Check Eventhouse for:")
-        print("  - order_events for order details")
-        print("  - kitchen_events for queue pressure")
-        print("  - inventory_events for stock alerts")
+        print("  - order_events     → pedidos y retrasos")
+        print("  - kitchen_events   → presión en estaciones")
+        print("  - inventory_events → stock crítico")
+        print("  - agent_events     → recomendaciones del agente")
+        print("  - approval_events  → decisiones de aprobación")
+        print("  - action_events    → acciones ejecutadas")
 
 
 if __name__ == "__main__":
