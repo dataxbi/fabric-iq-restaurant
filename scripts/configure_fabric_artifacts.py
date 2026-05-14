@@ -145,11 +145,6 @@ order_events
         {
             "title": "Station Status — Live",
             "query": """
-let station_load =
-    kitchen_events
-    | where event_time >= ago(30m)
-    | summarize arg_max(event_time, *) by station_id
-    | project station_id, last_seen=event_time, station_status, severity;
 let active_orders =
     order_events
     | where event_time >= ago(10m)
@@ -157,13 +152,12 @@ let active_orders =
     | where order_status !in ("completed", "cancelled")
     | summarize queue_size=count() by station_id;
 stations
-| join kind=leftouter station_load on station_id
 | join kind=leftouter active_orders on station_id
 | extend queue_size = coalesce(queue_size, 0)
-| extend station_status = coalesce(station_status, "idle")
-| extend severity = coalesce(severity, "info")
 | extend load_pct = iif(max_capacity > 0, round(100.0 * todouble(queue_size) / todouble(max_capacity), 1), real(0))
 | extend drain_minutes = iif(queue_size > max_capacity and avg_prep_minutes > 0, round(todouble(queue_size - max_capacity) * avg_prep_minutes / todouble(max_capacity), 1), real(0))
+| extend station_status = case(load_pct >= 100, "saturated", load_pct >= 75, "busy", queue_size > 0, "active", "idle")
+| extend severity = case(load_pct >= 100, "critical", load_pct >= 75, "warning", "info")
 | project station_id, display_name, specialization, station_status, queue_size, max_capacity, load_pct, drain_minutes, severity
 | order by load_pct desc
 """,
