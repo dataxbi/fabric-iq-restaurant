@@ -167,10 +167,14 @@ stations
         {
             "title": "Station Queue Pressure",
             "query": """
-kitchen_events
+order_events
 | where event_time > ago(1h)
-| summarize MaxQueue=max(queue_size), AvgQueue=round(avg(queue_size), 2), Events=count() by station_id, bin(event_time, 5m)
-| order by event_time desc
+| summarize
+    Created  = countif(event_name == "order.created"),
+    Delayed  = countif(event_name == "order.prep.delayed"),
+    Completed = countif(event_name == "payment.completed")
+    by station_id, bin(event_time, 5m)
+| order by event_time asc
 """,
             "layout": {"x": 14, "y": 6, "width": 10, "height": 7},
             "visual_type": "line",
