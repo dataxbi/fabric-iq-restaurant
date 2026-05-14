@@ -42,6 +42,13 @@ CHANNELS = ["delivery", "dine-in", "takeout"]
 INGREDIENTS = ["beef", "chicken", "fries", "sauce_bbq", "sauce_mayo"]
 FEEDBACK_LEVELS = ["muy_negativo", "negativo", "neutral", "positivo"]
 CANCEL_HISTORY = ["none", "cancelado_1_vez", "cancelado_2_veces", "cancelado_3_veces"]
+def _inventory_severity(stock_pct: float, threshold_pct: float = 20.0) -> str:
+    """Return severity based on how far stock is below threshold."""
+    if stock_pct <= threshold_pct * 0.5:   # <= 10% when threshold=20
+        return "critical"
+    return "warning"
+
+
 RECOMMENDATION_TYPES = [
     "reprioritize_order",
     "restock_ingredient",
@@ -406,7 +413,7 @@ def run_batch(producer, args: argparse.Namespace) -> None:
             ingredient_id=ingredient,
             stock_pct=8.0 if stock_pressure else 35.0 + n,
             threshold_pct=15.0, delta=-2.5,
-            severity="warning" if stock_pressure else "info",
+            severity=_inventory_severity(8.0 if stock_pressure else 35.0 + n, threshold_pct=15.0),
         ))
 
         is_delayed = high_pressure
@@ -481,7 +488,7 @@ def _scenario_anomalous_queue(producer) -> None:
 
     _send(producer, _base_event(
         "inventory.level.changed", "ingredient", ingredient,
-        ingredient_id=ingredient, severity="warning",
+        ingredient_id=ingredient, severity=_inventory_severity(stock_pct),
         stock_pct=stock_pct, threshold_pct=20.0, delta=random.randint(-10, -2),
     ))
     for i in range(queue_depth):
