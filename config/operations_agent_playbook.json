@@ -12,51 +12,108 @@
     ]
   },
   "businessGoals": [
-    "Protect customer SLA during peak demand.",
-    "Reduce kitchen bottlenecks before they affect multiple orders.",
-    "Avoid stock-outs for critical ingredients.",
-    "Recommend actions that are explainable and safe for human approval."
+    "Proteger el SLA del cliente durante demanda pico.",
+    "Reducir cuellos de botella en cocina antes de que afecten múltiples pedidos."
   ],
   "instructions": [
-    "Use Eventhouse data as the operational source of truth.",
-    "Escalate complex situations that combine delayed orders, saturated stations, critical inventory, channel pressure, or negative sentiment.",
-    "Explain the recommendation in concise natural language.",
-    "Prefer reversible operational actions over destructive actions.",
-    "Ask for human approval in Teams before executing a custom action."
+    "Usa Eventhouse como fuente única de verdad: order_events, kitchen_events, inventory_events.",
+    "Usa solo columnas del esquema actual: order_id, station_id, channel, delay_minutes, queue_size, stock_pct, threshold_pct y payload.* para cancellation_history, feedback, sla_remaining e is_premium.",
+    "Cuando detectes riesgo de incumplimiento de SLA, prioriza la acción ReprioritizeOrder.",
+    "Las recomendaciones deben ser breves, justificadas y requieren aprobación humana en Teams.",
+    "Siempre responde en español."
   ],
   "complexConditions": [
     {
-      "name": "DelayedDeliveryWithSaturation",
-      "description": "A delivery order is delayed, its station queue is high, and customer sentiment is negative or likely to become negative.",
-      "recommendedAction": "Reprioritize the order and assign a support station."
+      "name": "SlaRiskWithCustomerSignal",
+      "description": "Pedido con retraso y riesgo de SLA, junto con señal de cliente sensible (feedback negativo, historial de cancelación o is_premium=true en payload).",
+      "recommendedAction": "ReprioritizeOrder"
     },
     {
-      "name": "DelayWithCriticalIngredient",
-      "description": "A delayed order depends on an ingredient that is near or below threshold.",
-      "recommendedAction": "Trigger replenishment and recommend a substitution or channel throttle if needed."
-    },
-    {
-      "name": "MultiSignalPeakPressure",
-      "description": "Multiple stations and channels show pressure in the same time window.",
-      "recommendedAction": "Throttle the lowest-priority channel and prioritize orders closest to SLA breach."
+      "name": "StationBottleneckWithActiveDelays",
+      "description": "Estación con cola alta y pedidos ya retrasados; si además hay presión de inventario crítico, aumentar prioridad de los pedidos afectados por esa estación.",
+      "recommendedAction": "ReprioritizeOrder"
     }
   ],
   "customActions": [
     {
       "name": "ReprioritizeOrder",
-      "parameters": ["order_id", "station_id", "priority", "reason"]
+      "description": "Reprioriza un pedido en la estación de cocina especificada. Emite evento action.kitchen.reprioritized para trazabilidad.",
+      "parameters": [
+        {
+          "name": "orderId",
+          "description": "Identificador único del pedido",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "stationId",
+          "description": "Estación donde repriorizar: grill, fryer, sauces, assembly",
+          "type": "string",
+          "required": true,
+          "enum": ["grill", "fryer", "sauces", "assembly"]
+        },
+        {
+          "name": "priority",
+          "description": "Nivel de prioridad: normal, urgent, critical",
+          "type": "string",
+          "required": true,
+          "enum": ["normal", "urgent", "critical"]
+        },
+        {
+          "name": "reason",
+          "description": "Motivo de la repriorización (ej: SLA en riesgo, cliente VIP, error de entrada)",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "approvedBy",
+          "description": "Email de quien aprueba en Teams",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "channel",
+          "description": "Canal del pedido: delivery, dine-in, takeout",
+          "type": "string",
+          "required": true,
+          "enum": ["delivery", "dine-in", "takeout"]
+        },
+        {
+          "name": "severity",
+          "description": "Severidad: info, warning, critical",
+          "type": "string",
+          "required": true,
+          "enum": ["info", "warning", "critical"]
+        }
+      ],
+      "expectedOutcome": "Pedido reasignado con mayor prioridad; evento registrado en action_events para auditoría y dashboard."
     },
     {
       "name": "TriggerRestock",
-      "parameters": ["ingredient_id", "stock_pct", "reason"]
+      "description": "Desencadena reabastecimiento de un ingrediente crítico.",
+      "parameters": [
+        "ingredient_id",
+        "stock_pct",
+        "reason"
+      ]
     },
     {
       "name": "ThrottleChannel",
-      "parameters": ["channel", "duration_minutes", "reason"]
+      "description": "Reduce temporalmente la entrada de pedidos en un canal específico.",
+      "parameters": [
+        "channel",
+        "duration_minutes",
+        "reason"
+      ]
     },
     {
       "name": "IssueCompensation",
-      "parameters": ["order_id", "compensation_type", "reason"]
+      "description": "Emite compensación a cliente (descuento, voucher, etc.).",
+      "parameters": [
+        "order_id",
+        "compensation_type",
+        "reason"
+      ]
     }
   ]
 }

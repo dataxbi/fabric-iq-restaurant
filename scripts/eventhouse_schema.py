@@ -141,6 +141,23 @@ UPDATE_POLICIES = [
     ("action_events", "RouteActionEvents"),
 ]
 
+# Reference table: static station definitions.
+# Use .set-or-replace so re-running the script resets to the canonical values.
+STATIONS_DATA = """.set-or-replace stations <|
+datatable(
+    station_id:string,
+    display_name:string,
+    specialization:string,
+    max_capacity:long,
+    avg_prep_minutes:real,
+    is_active:bool
+)[
+    "grill",    "Plancha / Parrilla", "Carnes, hamburguesas, filetes",      4, 8.0,  true,
+    "fryer",    "Freidora",           "Patatas fritas, croquetas, alitas",   4, 6.0,  true,
+    "sauces",   "Salsas y Aderezos",  "Salsas, ensaladas, preparaciones",   3, 3.0,  true,
+    "assembly", "Montaje Final",      "Ensamblaje del plato y empaquetado",  5, 2.0,  true
+]"""
+
 
 def deploy_schema(query_service_uri: str, database_name: str) -> None:
     for table_name, columns in TABLES:
@@ -169,6 +186,10 @@ def deploy_schema(query_service_uri: str, database_name: str) -> None:
         )
         run_kusto_management(query_service_uri, database_name, f".alter table {table_name} policy update @'{policy}'")
 
+    # Seed reference table with station definitions
+    run_kusto_management(query_service_uri, database_name, STATIONS_DATA)
+    print("  stations reference table seeded (4 stations).")
+
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="Create the Eventhouse tables for the restaurant demo")
@@ -195,6 +216,7 @@ def main() -> None:
     if args.skip_policies or not read_bool_env("FABRIC_APPLY_EVENTHOUSE_SCHEMA", True):
         for table_name, columns in TABLES:
             run_kusto_management(query_service_uri, database_name, f".create-merge table {table_name} ({columns})")
+        run_kusto_management(query_service_uri, database_name, STATIONS_DATA)
         print("Table creation completed.")
         return
 

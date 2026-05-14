@@ -25,7 +25,8 @@ Eventhouse (RTI Database)
     ├── inventory_events (stock changes)
     ├── agent_events (recommendations)
     ├── approval_events (human approvals)
-    └── action_events (executed actions)
+    ├── action_events (executed actions)
+    └── stations (reference: capacity & prep times)
     ↓
 Real-Time Dashboard + Fabric Activator + Operations Agent
 ```
@@ -48,7 +49,11 @@ fabric-iq-restaurant/
 │   ├── eventhouse_schema.py           # KQL table definitions
 │   ├── configure_eventstream.py       # Configure Eventstream topology
 │   ├── configure_fabric_artifacts.py  # Create RTI dashboard, Activator, and Operations Agent items
-│   └── send_eventstream_events.py     # Send demo events to Event Hub
+│   ├── configure_user_data_function.py # Create User Data Function for custom actions
+│   ├── send_eventstream_events.py     # Send demo events to Event Hub
+│   └── simulate_agent_trigger_events.py # Generate events for Operations Agent testing
+├── user_data_functions/
+│   └── restaurant_operations/         # User Data Function source and definition
 ├── .env.example                        # Environment variables template
 └── .gitignore                          # Git ignore patterns
 ```
@@ -170,6 +175,32 @@ Current scripted coverage:
 - Activator/Reflex: deploys three KQL-backed rules for delayed orders, critical inventory, and delivery saturation, with Teams notifications routed to `FABRIC_ALERT_RECIPIENT` or the current Azure CLI user.
 - Operations Agent: deploys goals, instructions, and a KQL data source from `config/operations_agent_playbook.json`. Power Automate action wiring still needs UI completion because the current preview API accepted action definitions but then made `getDefinition` return HTTP 500 during testing.
 
+### Create Operations Agent Custom Action Function
+
+Create or update a Fabric User Data Function item with `recordReprioritizeOrder`:
+
+```bash
+py scripts/configure_user_data_function.py
+```
+
+The function publishes an `action.kitchen.reprioritized` event to Event Hub. Eventstream ingests it into `raw_restaurant_events`, and the Eventhouse update policy routes it into `action_events`.
+
+The Fabric REST definition API can create the User Data Function item and libraries, but in preview it might not preserve the Python function body on readback. If the Functions explorer is empty after running the script, open the item in Fabric, paste `user_data_functions/restaurant_operations/function_app.py` into the editor, verify `azure-eventhub` in **Library management**, and publish.
+
+The function reads an internal constant named `EVENT_HUB_CONNECTION_STRING` from `function_app.py`. Set that value in Fabric before publishing. Never commit a real value to git.
+
+Function parameters:
+
+| Parameter | Description |
+|----------|-------------|
+| `orderId` | Order to reprioritize |
+| `stationId` | Kitchen station handling the order |
+| `priority` | Proposed priority, for example `urgent` |
+| `reason` | Agent explanation approved by the human reviewer |
+| `approvedBy` | Approver identity from Teams/Power Automate |
+| `channel` | Order channel, defaults to `delivery` |
+| `severity` | Action severity, defaults to `warning` |
+
 ### Manual Fabric UI Steps
 
 Some RTI preview features require UI confirmation even after the item definition is deployed by script:
@@ -177,7 +208,8 @@ Some RTI preview features require UI confirmation even after the item definition
 1. Open the **Restaurant Operations RTI** Real-Time Dashboard and confirm the six tiles render without load errors.
 2. Open **Restaurant Operations Activator** and confirm the three rules are enabled. If Fabric asks for permissions, authorize Teams notifications for the configured recipient.
 3. Open **RestaurantOperationsAgent** and review the goals, instructions, and KQL data source.
-4. In **RestaurantOperationsAgent**, attach the Power Automate or Teams approval actions manually, then set the agent to run only after the action connection is confirmed.
+4. Open **RestaurantOperationsActions**, paste/publish `recordReprioritizeOrder` if the Functions explorer is empty, and copy or enable its function URL.
+5. In **RestaurantOperationsAgent**, attach the Power Automate or Teams approval actions manually, then set the agent to run only after the action connection is confirmed.
 
 Do not enable scripted Operations Agent actions by default. The script has an opt-in `--include-agent-actions` flag, but current preview behavior can accept the action definition and then make `getDefinition` fail. Keep the default stable configuration unless testing the preview API intentionally.
 
@@ -200,6 +232,24 @@ Options:
 ```bash
 py scripts/send_eventstream_events.py --scenario stock-critical --orders 8 --interval-seconds 0.1
 ```
+
+### Test Operations Agent Trigger Conditions
+
+Generate events that specifically trigger the Operations Agent conditions defined in `config/operations_agent_playbook.json`:
+
+```bash
+py scripts/simulate_agent_trigger_events.py
+```
+
+The script runs **continuously** (press `Ctrl+C` to stop) and emits three realistic scenarios every ~7 seconds with randomized values:
+
+1. **PremiumClientNearSLA**: Premium customer with varied cancellation history, random feedback, and SLA 3–8 minutes remaining
+2. **AnomalousStationQueue**: High queue (5–8 orders) at a random station with a critical ingredient shortage
+3. **MultiChannelPressureWithTrade-off**: Simultaneous pressure across delivery, dine-in, and takeout with varied premium/standard mix
+
+Each iteration uses randomized `order_id`, SLA values, delay minutes, feedback, and cancellation history to produce realistic, non-repeating event patterns.
+
+Monitor the **Operations Agent** in Fabric UI or check the Teams approval channel to see if the agent detects these conditions and recommends `ReprioritizeOrder` or other actions.
 
 ## Key Scripts
 
@@ -233,6 +283,7 @@ Provisioning script for Fabric resources:
 Defines KQL tables with:
 - **Raw landing table**: `raw_restaurant_events`
 - **Operational tables**: `order_events`, `kitchen_events`, `inventory_events`, `agent_events`, `approval_events`, `action_events`
+- **Reference table**: `stations` — static definition of the 4 kitchen stations (grill, fryer, sauces, assembly) with `max_capacity` (parallel units, e.g. burners), `avg_prep_minutes`, and `is_active`. Seeded with `.set-or-replace` on every run.
 - **Routing logic**: KQL functions and update policies that distribute raw events to operational tables
 - **Retention policies**: Soft delete after 30 days
 - **Caching policies**: Hot cache for recent data
@@ -250,6 +301,13 @@ Event generator using Azure Event Hub SDK:
 - Generates synthetic restaurant events for orders, kitchen stations, inventory, delays, sentiment, and payments
 - Batches events for efficiency
 - Sends via Event Hub producer client
+
+### `configure_user_data_function.py`
+
+Creates the `RestaurantOperationsActions` Fabric User Data Function item and stores its deployable definition in the repo:
+- Defines `recordReprioritizeOrder` with the Fabric User Data Functions Python programming model.
+- Includes the `azure-eventhub` PyPI dependency in the item definition.
+- Publishes approved custom action events back through Event Hub/Eventstream instead of writing directly to derived KQL tables.
 
 **Event schema**:
 ```json
@@ -286,10 +344,13 @@ py scripts/configure_eventstream.py --recreate --source-type CustomEndpoint
 # 4. Configure RTI dashboard, Activator, and Operations Agent
 py scripts/configure_fabric_artifacts.py
 
-# 5. Send demo events
+# 5. Configure the custom action User Data Function
+py scripts/configure_user_data_function.py
+
+# 6. Send demo events
 py scripts/send_eventstream_events.py --scenario peak --orders 12 --interval-seconds 0.5
 
-# 6. Query data (in Fabric portal)
+# 7. Query data (in Fabric portal)
 # KQL: raw_restaurant_events | count
 # KQL: order_events | count
 ```

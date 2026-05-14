@@ -1,0 +1,55 @@
+{
+  "runtime": "PYTHON",
+  "functionsMetadata": [
+    {
+      "name": "recordReprioritizeOrder",
+      "scriptFile": "function_app.py",
+      "bindings": [
+        {
+          "methods": [
+            "POST"
+          ],
+          "route": "",
+          "authLevel": "Anonymous",
+          "name": "req",
+          "direction": "In",
+          "type": "HttpTrigger"
+        }
+      ],
+      "fabricProperties": {
+        "fabricMetadataSchemaVersion": "1.1.0",
+        "fabricFunctionParameters": [
+          {
+            "dataType": "str",
+            "name": "orderId"
+          },
+          {
+            "dataType": "str",
+            "name": "stationId"
+          },
+          {
+            "dataType": "str",
+            "name": "priority"
+          },
+          {
+            "dataType": "str",
+            "name": "reason"
+          },
+          {
+            "dataType": "str",
+            "name": "approvedBy"
+          },
+          {
+            "dataType": "str",
+            "name": "channel"
+          },
+          {
+            "dataType": "str",
+            "name": "severity"
+          }
+        ],
+        "fabricFunctionReturnType": "dict"
+      }
+    }
+  ]
+}
