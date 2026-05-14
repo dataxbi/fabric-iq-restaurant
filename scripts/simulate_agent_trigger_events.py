@@ -1,5 +1,12 @@
 #!/usr/bin/env python3
-"""Simulate events to trigger Operations Agent conditions and agent decisions.
+"""DEPRECATED — use simulate_restaurant.py instead.
+
+  python simulate_restaurant.py --continuous
+  python simulate_restaurant.py --continuous --no-agent-loop
+
+---
+
+Simulate events to trigger Operations Agent conditions and agent decisions.
 
 The emitted JSON matches the repository routing pattern:
 raw_restaurant_events -> update policies ->

@@ -1,3 +1,8 @@
+"""DEPRECATED — use simulate_restaurant.py instead.
+
+  python simulate_restaurant.py --orders 20 --scenario peak
+"""
+
 import argparse
 import json
 import os
