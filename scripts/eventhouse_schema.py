@@ -14,7 +14,7 @@ TABLES = [
     ),
     (
         "kitchen_events",
-        "event_time:datetime, event_id:string, station_id:string, station_status:string, queue_size:long, capacity:long, severity:string, payload:dynamic",
+        "event_time:datetime, event_id:string, station_id:string, capacity:long, severity:string, payload:dynamic",
     ),
     (
         "inventory_events",
@@ -62,8 +62,6 @@ raw_restaurant_events
     event_time,
     event_id,
     station_id,
-    station_status = tostring(payload.station_status),
-    queue_size = tolong(payload.queue_size),
     capacity = tolong(payload.capacity),
     severity,
     payload

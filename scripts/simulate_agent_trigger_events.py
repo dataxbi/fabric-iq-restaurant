@@ -182,8 +182,6 @@ def scenario_premium_client_near_sla():
             entity_id=station,
             station_id=station,
             severity="warning",
-            station_status="saturated",
-            queue_size=random.randint(6, 10),
             capacity=4,
         )
         publish_event(producer, kitchen, "kitchen.station.updated")
@@ -251,8 +249,6 @@ def scenario_anomalous_station_queue():
             entity_id=station,
             station_id=station,
             severity="warning",
-            station_status="saturated",
-            queue_size=queue_depth,
             capacity=4,
         )
         publish_event(producer, kitchen_event, "kitchen.station.updated")
@@ -304,8 +300,6 @@ def scenario_multi_channel_pressure():
                 entity_id=station,
                 station_id=station,
                 severity="warning",
-                station_status="saturated",
-                queue_size=random.randint(2, 4),
                 capacity=5,
             )
             publish_event(producer, kitchen_event, "kitchen.station.updated")
@@ -450,18 +444,13 @@ def scenario_complete_orders() -> None:
             completed_by_station[order["station_id"]] = completed_by_station.get(order["station_id"], 0) + 1
 
         # Emit a kitchen recovery event for each station that drained orders
-        pending_by_station = {s: sum(1 for o in _pending_orders if o["station_id"] == s) for s in completed_by_station}
-        for station_id, drained in completed_by_station.items():
-            remaining = pending_by_station.get(station_id, 0)
-            status = "normal" if remaining <= 2 else "busy"
+        for station_id in completed_by_station:
             recovery = base_event(
                 event_name="kitchen.station.updated",
                 entity_type="station",
                 entity_id=station_id,
                 station_id=station_id,
                 severity="info",
-                station_status=status,
-                queue_size=remaining,
                 capacity=5,
             )
             publish_event(producer, recovery, "kitchen.station.updated")
