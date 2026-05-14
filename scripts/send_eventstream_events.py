@@ -10,7 +10,7 @@ from fabric_client import FabricConfigError
 load_dotenv()
 
 
-STATIONS = ["grill", "prep", "kitchen-main", "delivery-counter"]
+STATIONS = ["grill", "fryer", "sauces", "assembly"]
 CHANNELS = ["delivery", "in_store", "pickup"]
 INGREDIENTS = ["brioche_bun", "tomato", "lettuce", "chicken", "cheese"]
 
