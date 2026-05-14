@@ -291,31 +291,6 @@ union
             "layout": {"x": 8, "y": 20, "width": 16, "height": 6},
             "visual_type": "table",
         },
-        {
-            "title": "Complex Agent Review Candidates",
-            "query": """
-let DelayedOrders =
-    order_events
-    | where event_name == "order.prep.delayed"
-    | extend queue_size = tolong(payload.queue_size)
-    | where delay_minutes >= 5 and queue_size >= 7
-    | project order_id, channel, station_id, delay_time=event_time, delay_minutes, queue_size;
-let NegativeSignals =
-    order_events
-    | where event_name == "customer.sentiment.signal"
-    | extend sentiment = tostring(payload.sentiment), reason = tostring(payload.reason)
-    | where sentiment == "negative"
-    | project order_id, sentiment_time=event_time, sentiment, reason;
-DelayedOrders
-| join kind=leftouter NegativeSignals on order_id
-| extend requires_agent_review = isnotempty(sentiment) or delay_minutes >= 8
-| where requires_agent_review
-| project delay_time, order_id, channel, station_id, delay_minutes, queue_size, sentiment, reason
-| order by delay_time desc
-""",
-            "layout": {"x": 0, "y": 26, "width": 24, "height": 7},
-            "visual_type": "table",
-        },
     ]
     queries = []
     tiles = []
