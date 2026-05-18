@@ -187,9 +187,9 @@ Examples
         """,
     )
     parser.add_argument("--connection-string", default=None,
-                        help="Event Hub connection string (overrides env)")
-    parser.add_argument("--eventhub-name", default=None,
-                        help="Event Hub entity name override")
+                        help="Eventstream Custom App connection string (overrides env)")
+    parser.add_argument("--custom-app-name", default=None,
+                        help="Eventstream Custom App entity name override (EntityPath)")
     # Mode
     parser.add_argument("--continuous", action="store_true", default=False,
                         help="Run in continuous loop mode (default: batch)")
@@ -214,11 +214,11 @@ Examples
 
 def _get_connection_string(args: argparse.Namespace) -> str:
     cs = (args.connection_string or
-          os.environ.get("EVENTSTREAM_EVENTHUB_CONNECTION_STRING", "")).strip()
+          os.environ.get("EVENTSTREAM_CUSTOM_APP_CONNECTION_STRING", "")).strip()
     if not cs:
         raise ValueError(
-            "Missing Event Hub connection string. "
-            "Set EVENTSTREAM_EVENTHUB_CONNECTION_STRING in .env or pass --connection-string."
+            "Missing Eventstream Custom App connection string. "
+            "Set EVENTSTREAM_CUSTOM_APP_CONNECTION_STRING in .env or pass --connection-string."
         )
     return cs
 
@@ -259,7 +259,7 @@ def _base_event(
 
 
 def _send(producer, event: dict) -> None:
-    """Publish one event to Event Hub."""
+    """Publish one event to the Eventstream Custom App endpoint."""
     from azure.eventhub import EventData
     body = json.dumps(event, separators=(",", ":")).encode("utf-8")
     batch = producer.create_batch()
@@ -727,7 +727,7 @@ def main() -> None:
 
     args = build_parser().parse_args()
     connection_string = _get_connection_string(args)
-    hub_name = _eventhub_name(connection_string, args.eventhub_name)
+    hub_name = _eventhub_name(connection_string, args.custom_app_name)
 
     from azure.eventhub import EventHubProducerClient
     producer = EventHubProducerClient.from_connection_string(

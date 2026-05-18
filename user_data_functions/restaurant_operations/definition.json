@@ -5,7 +5,7 @@
   "functions": [
     {
       "name": "recordReprioritizeOrder",
-      "description": "Publish an approved kitchen reprioritization action event to Event Hub for Eventstream ingestion.",
+      "description": "Publish an approved kitchen reprioritization action event to the Eventstream Custom App endpoint for Eventstream ingestion.",
       "isPublicEndpointEnabled": true
     }
   ],

@@ -6,7 +6,7 @@ import uuid
 import fabric.functions as fn
 
 udf = fn.UserDataFunctions()
-EVENT_HUB_CONNECTION_STRING = ""
+CUSTOM_APP_CONNECTION_STRING = ""
 
 
 def _require(value: str, name: str) -> str:
@@ -19,7 +19,7 @@ def _eventhub_name_from_connection_string(connection_string: str) -> str:
     for part in connection_string.split(";"):
         if part.startswith("EntityPath="):
             return part.split("=", 1)[1]
-    raise fn.UserThrownError("EVENT_HUB_CONNECTION_STRING must include EntityPath.", {})
+    raise fn.UserThrownError("CUSTOM_APP_CONNECTION_STRING must include EntityPath.", {})
 
 
 @udf.function()
@@ -34,11 +34,11 @@ def recordReprioritizeOrder(
 ) -> dict:
     """
     Summary: Publish an approved restaurant reprioritization action event.
-    Description: Sends an action.kitchen.reprioritized event to Event Hub so Eventstream ingests it into raw_restaurant_events and KQL update policies route it into action_events.
+    Description: Sends an action.kitchen.reprioritized event to the Eventstream Custom App endpoint so Eventstream ingests it into raw_restaurant_events and KQL update policies route it into action_events.
     """
     from azure.eventhub import EventData, EventHubProducerClient
 
-    connection_string = _require(EVENT_HUB_CONNECTION_STRING, "EVENT_HUB_CONNECTION_STRING")
+    connection_string = _require(CUSTOM_APP_CONNECTION_STRING, "CUSTOM_APP_CONNECTION_STRING")
     order_id = _require(orderId, "orderId")
     station_id = _require(stationId, "stationId")
     action_id = f"act-{uuid.uuid4()}"

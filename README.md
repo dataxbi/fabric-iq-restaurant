@@ -5,7 +5,7 @@ A Real-Time Intelligence demonstration for a self-managing restaurant system usi
 ## Overview
 
 This project demonstrates an end-to-end Real-Time Intelligence flow for a restaurant that leverages:
-- **Real-time Event Ingestion**: Azure Event Hub → Fabric Eventstream → KQL Database
+- **Real-time Event Ingestion**: Eventstream Custom App → Fabric Eventstream → KQL Database
 - **Operational Source of Truth**: Eventhouse/KQL tables for live order, kitchen, inventory, agent, approval, and action events
 - **Simple Automation**: Fabric Activator for objective threshold-based conditions
 - **Complex Recommendations**: Operations Agent for contextual recommendations and human approval in Teams
@@ -14,7 +14,9 @@ This project demonstrates an end-to-end Real-Time Intelligence flow for a restau
 ## Architecture
 
 ```
-Event Hub (Custom Endpoint)
+Eventstream Custom App (Connection String)
+    ↑
+Simulator (Python scripts)
     ↓
 Eventstream (Restaurant)
     ↓
@@ -67,7 +69,7 @@ fabric-iq-restaurant/
 - Azure CLI (`az` command available in PATH)
 - Authenticated Azure subscription with:
   - Fabric capacity
-  - Event Hub namespace with SAS policy
+  - Fabric workspace with an Eventstream item that has a **Custom App** source configured
 - Microsoft Fabric workspace (created manually or via Azure Portal)
 
 ## Installation
@@ -116,14 +118,14 @@ FABRIC_WORKSPACE_NAME=Fabric_IQ_Restaurant
 FABRIC_EVENTHOUSE_NAME=restaurant_eventhouse
 FABRIC_KQL_DATABASE_NAME=restaurant_rti
 FABRIC_EVENTSTREAM_NAME=restaurant_eventstream
-EVENTSTREAM_EVENTHUB_CONNECTION_STRING=Endpoint=sb://...;SharedAccessKeyName=...;SharedAccessKey=...;EntityPath=...
+EVENTSTREAM_CUSTOM_APP_CONNECTION_STRING=Endpoint=sb://...;SharedAccessKeyName=...;SharedAccessKey=...;EntityPath=...
 FABRIC_ALERT_RECIPIENT=user@contoso.com
 ```
 
-**Note**: `EVENTSTREAM_EVENTHUB_CONNECTION_STRING` is obtained from the Event Hub namespace in Azure Portal:
-- Navigate to your Event Hub namespace
-- Go to **Shared access policies** → Create a policy with "Send" permission
-- Copy the **Primary Connection String**
+**Note**: `EVENTSTREAM_CUSTOM_APP_CONNECTION_STRING` is obtained from the Eventstream item in Fabric:
+- Open your Eventstream item in the Fabric portal
+- Select the **Custom App** source node
+- Copy the **Event Hub-compatible connection string** shown in the source details
 
 ### 5. Authenticate with Azure
 
@@ -153,7 +155,7 @@ py scripts/eventhouse_schema.py
 
 ### Configure Eventstream Topology
 
-Set up the data flow from Event Hub to the raw landing `raw_restaurant_events` table in Eventhouse:
+Set up the data flow from the Eventstream Custom App to the raw landing `raw_restaurant_events` table in Eventhouse:
 
 ```bash
 py scripts/configure_eventstream.py --recreate --source-type CustomEndpoint
@@ -161,7 +163,7 @@ py scripts/configure_eventstream.py --recreate --source-type CustomEndpoint
 
 Options:
 - `--recreate`: Rebuild the Eventstream definition from scratch
-- `--source-type`: `CustomEndpoint` (Event Hub) or `SampleData` (demo data)
+- `--source-type`: `CustomEndpoint` (Eventstream Custom App) or `SampleData` (demo data)
 
 ### Create RTI UI Artifacts
 
@@ -186,11 +188,11 @@ Create or update a Fabric User Data Function item with `recordReprioritizeOrder`
 py scripts/configure_user_data_function.py
 ```
 
-The function publishes an `action.kitchen.reprioritized` event to Event Hub. Eventstream ingests it into `raw_restaurant_events`, and the Eventhouse update policy routes it into `action_events`.
+The function publishes an `action.kitchen.reprioritized` event to the Eventstream Custom App endpoint. Eventstream ingests it into `raw_restaurant_events`, and the Eventhouse update policy routes it into `action_events`.
 
 The Fabric REST definition API can create the User Data Function item and libraries, but in preview it might not preserve the Python function body on readback. If the Functions explorer is empty after running the script, open the item in Fabric, paste `user_data_functions/restaurant_operations/function_app.py` into the editor, verify `azure-eventhub` in **Library management**, and publish.
 
-The function reads an internal constant named `EVENT_HUB_CONNECTION_STRING` from `function_app.py`. Set that value in Fabric before publishing. Never commit a real value to git.
+The function reads an internal constant named `CUSTOM_APP_CONNECTION_STRING` from `function_app.py`. Set that value (obtained from the Eventstream Custom App source in Fabric) before publishing. Never commit a real value to git.
 
 Function parameters:
 
@@ -218,7 +220,7 @@ Do not enable scripted Operations Agent actions by default. The script has an op
 
 ### Send Demo Events
 
-Run the unified simulator in **batch** mode to publish a peak-hour scenario to Event Hub:
+Run the unified simulator in **batch** mode to publish a peak-hour scenario to the Eventstream Custom App:
 
 ```bash
 py scripts/simulate_restaurant.py --orders 12 --scenario peak --interval-seconds 0.5
@@ -228,7 +230,7 @@ Options:
 - `--orders`: Number of synthetic orders to simulate (default: 12)
 - `--scenario`: `normal`, `peak`, or `stock-critical`
 - `--interval-seconds`: Delay between events in seconds (default: 0.5)
-- `--connection-string`: Override connection string (optional; uses `EVENTSTREAM_EVENTHUB_CONNECTION_STRING` from `.env`)
+- `--connection-string`: Override connection string (optional; uses `EVENTSTREAM_CUSTOM_APP_CONNECTION_STRING` from `.env`)
 
 **Example**: Critical stock scenario with 8 orders:
 
@@ -304,7 +306,7 @@ Defines KQL tables with:
 ### `configure_eventstream.py`
 
 Sets up Eventstream topology:
-- **Source**: Custom Event Hub endpoint or sample data
+- **Source**: Eventstream Custom App or sample data
 - **Destination**: KQL table `raw_restaurant_events`
 - **Format**: JSON with automatic schema detection
 
@@ -334,7 +336,7 @@ Emits the full order lifecycle: `order.created` → `order.prep.delayed` (if del
 Creates the `RestaurantOperationsActions` Fabric User Data Function item and stores its deployable definition in the repo:
 - Defines `recordReprioritizeOrder` with the Fabric User Data Functions Python programming model.
 - Includes the `azure-eventhub` PyPI dependency in the item definition.
-- Publishes approved custom action events back through Event Hub/Eventstream instead of writing directly to derived KQL tables.
+- Publishes approved custom action events back through the Eventstream Custom App instead of writing directly to derived KQL tables.
 
 **Event schema**:
 ```json
@@ -394,9 +396,9 @@ This is a temporary authentication issue. Run `az login` and retry the command:
 py scripts/simulate_restaurant.py --scenario peak --orders 12 --interval-seconds 0.5
 ```
 
-### "Missing EVENTSTREAM_EVENTHUB_CONNECTION_STRING"
+### "Missing EVENTSTREAM_CUSTOM_APP_CONNECTION_STRING"
 
-Ensure `.env` file exists and contains the connection string. Verify the Event Hub namespace and SAS policy are created in Azure Portal.
+Ensure `.env` file exists and contains the connection string. Obtain it from the Eventstream Custom App source node in the Fabric portal.
 
 ### "Workspace not found"
 
@@ -407,7 +409,7 @@ Check that:
 
 ### Eventstream shows no data
 
-1. Verify Event Hub is receiving events: Check Azure Portal → Event Hub Namespace → Metrics
+1. Verify the Eventstream Custom App source is receiving events: Check Eventstream metrics in the Fabric portal
 2. Verify Eventstream source is configured: `py scripts/configure_eventstream.py --recreate --source-type CustomEndpoint`
 3. Check the raw KQL table is receiving: Query in KQL editor → `raw_restaurant_events | count`
 4. Check update policies are routing rows: Query in KQL editor → `order_events | count`, `kitchen_events | count`, `inventory_events | count`
@@ -442,7 +444,7 @@ This is expected. The script deploys the stable Operations Agent configuration w
 
 1. `az account get-access-token` → Bearer token (Fabric API)
 2. Kusto management queries use separate token with audience `https://kusto.kusto.windows.net`
-3. Event Hub uses SAS connection string (no token needed)
+3. Event Hub-compatible SDK (`azure-eventhub`) sends to Eventstream Custom App using SAS connection string (no Azure token needed)
 
 ### Long-Running Operations (LRO)
 
@@ -473,14 +475,14 @@ else:
 | `FABRIC_EVENTHOUSE_NAME` | Yes | Eventhouse (KQL database) name |
 | `FABRIC_KQL_DATABASE_NAME` | Yes | KQL database name |
 | `FABRIC_EVENTSTREAM_NAME` | Yes | Eventstream name |
-| `EVENTSTREAM_EVENTHUB_CONNECTION_STRING` | Yes | Event Hub connection string (from portal) |
+| `EVENTSTREAM_CUSTOM_APP_CONNECTION_STRING` | Yes | Eventstream Custom App connection string (from Fabric portal → Eventstream → Custom App source) |
 | `FABRIC_ALERT_RECIPIENT` | No | Teams/email recipient for Activator and Operations Agent notifications; defaults to current Azure CLI user |
 
 ## References
 
 - [Microsoft Fabric Documentation](https://learn.microsoft.com/en-us/fabric/)
 - [Real-time Intelligence (RTI)](https://learn.microsoft.com/en-us/fabric/real-time-intelligence/)
-- [Azure Event Hub SDK for Python](https://learn.microsoft.com/en-us/python/api/overview/azure/eventhub-readme)
+- [Azure Event Hub SDK for Python](https://learn.microsoft.com/en-us/python/api/overview/azure/eventhub-readme) — used as the transport SDK for the Eventstream Custom App endpoint
 - [KQL Query Language](https://learn.microsoft.com/en-us/kusto/query/)
 
 ## License
